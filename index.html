@@ -194,7 +194,7 @@
   #pad button.active-pad { box-shadow: 0 0 0 3px var(--accent); }
   #pad button .piece-icon { width: 30px; height: 30px; }
 
-  #controls { margin-top: 16px; display: flex; gap: 10px; }
+  #controls { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
   #controls button {
     padding: 10px 18px;
     border: 2px solid var(--board-frame);
@@ -206,6 +206,7 @@
     cursor: pointer;
     color: var(--text);
   }
+  #btn-tutorial { border-color: var(--accent); color: var(--accent); }
 
   #toast {
     margin-top: 14px;
@@ -412,6 +413,7 @@
     <div id="controls">
       <button id="btn-erase">🧽 Apagar</button>
       <button id="btn-new">🔁 Novo puzzle</button>
+      <button id="btn-tutorial">❓ Ver tutorial</button>
     </div>
 
     <div id="toast"></div>
@@ -1038,7 +1040,13 @@ const Tutorial = {
     this.positionFor(step.target());
   },
 
-  start() {
+  // resume=true: reabertura manual a meio de um jogo em curso (pausa e retoma o cronómetro
+  // sem perder tempo decorrido). resume=false (por omissão): primeira vez, jogo acabado de começar.
+  start(resume = false) {
+    this.resumeMode = resume;
+    this.savedElapsed = resume ? Game.elapsedSeconds() : 0;
+    if (Game.timerInterval) { clearInterval(Game.timerInterval); Game.timerInterval = null; }
+
     UI.boardEl.classList.add('tutorial-lock');
     UI.padEl.classList.add('tutorial-lock');
     this.overlay.classList.remove('hidden');
@@ -1059,12 +1067,15 @@ const Tutorial = {
     UI.padEl.classList.remove('tutorial-lock');
     try { localStorage.setItem('passengerdoku_tutorial_seen', '1'); } catch (e) {}
 
-    if (!Game.timerInterval) {
-      Game.startTime = Date.now();
-      Game.timerInterval = setInterval(() => {
-        UI.updateTimer();
-        UI.updateScore();
-      }, 500);
+    // retoma o cronómetro exatamente de onde tinha ficado (0 na primeira vez, o tempo real se reaberto a meio do jogo)
+    if (!Game.solved) {
+      Game.startTime = Date.now() - this.savedElapsed * 1000;
+      if (!Game.timerInterval) {
+        Game.timerInterval = setInterval(() => {
+          UI.updateTimer();
+          UI.updateScore();
+        }, 500);
+      }
     }
   },
 };
@@ -1099,6 +1110,7 @@ document.getElementById('btn-play').addEventListener('click', () => Controller.s
 document.getElementById('btn-back').addEventListener('click', () => Controller.confirmExit());
 document.getElementById('btn-erase').addEventListener('click', () => Controller.eraseSelected());
 document.getElementById('btn-new').addEventListener('click', () => Controller.confirmNewPuzzle());
+document.getElementById('btn-tutorial').addEventListener('click', () => Tutorial.start(true));
 document.getElementById('btn-again').addEventListener('click', () => Controller.startGame());
 
 Profile.load();
