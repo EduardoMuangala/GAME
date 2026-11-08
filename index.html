@@ -13,7 +13,7 @@
 <!-- GSAP: transições de ecrã e micro-animações -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <!-- canvas-confetti: celebração na vitória -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
 <style>
   :root {
@@ -288,6 +288,79 @@
   #tt-next { background: var(--board-frame); color: #fff; }
   #tutorial-overlay.hidden { display: none; }
   #board.tutorial-lock .cell, #pad.tutorial-lock button { pointer-events: none; }
+
+  /* ---------- Combo pill ---------- */
+  .topbar .pill.combo { color: var(--accent); transition: transform .15s ease; }
+  .topbar .pill.combo.pulse { transform: scale(1.15); }
+
+  /* ---------- Cards de conquista (toast complexo) ---------- */
+  #achv-layer {
+    position: fixed;
+    top: 18px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 600;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+    width: 100%;
+    align-items: center;
+  }
+  .achv-card {
+    background: var(--board-frame);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: .88rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 24px rgba(0,0,0,.28);
+    white-space: nowrap;
+  }
+  .achv-card .achv-icon { font-size: 1.15rem; }
+
+  /* ---------- Modal de confirmação (genérico) ---------- */
+  #modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,14,9,.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 700;
+    padding: 20px;
+  }
+  #modal-overlay.hidden { display: none; }
+  .modal-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 26px 26px 22px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 24px 50px rgba(0,0,0,.3);
+  }
+  .modal-card .modal-icon { font-size: 2.2rem; margin-bottom: 4px; }
+  .modal-card h3 { margin: 4px 0 6px; font-size: 1.2rem; }
+  .modal-card p { margin: 0 0 18px; font-size: .9rem; color: var(--text-soft); line-height: 1.4; }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; }
+  .modal-actions button {
+    flex: 1;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 14px;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: .88rem;
+    cursor: pointer;
+  }
+  #modal-cancel { background: #F0E4D1; color: var(--text); }
+  #modal-confirm { background: var(--error-ic); color: #fff; }
+
+  /* ---------- Estrelas no ecrã de vitória ---------- */
+  .stars-row { display: flex; justify-content: center; gap: 8px; margin: 10px 0 4px; }
+  .stars-row .star { font-size: 2rem; opacity: .25; transform: scale(.6); }
+  .stars-row .star.earned { opacity: 1; }
+  .win-combo { font-size: .85rem; color: var(--text-soft); margin-top: -8px; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -303,6 +376,7 @@
   <main class="screen" id="screen-start">
     <div class="logo-mouse">🐭</div>
     <h1>Ratodoku</h1>
+    <div class="pill" id="profile-pill" style="font-size:.85rem;">⭐ 0 · 🎮 0 jogos</div>
     <p class="tagline">O quebra-cabeça lógico dos ratinhos. Preenche a grelha sem repetir nenhum na mesma linha, coluna ou bloco.</p>
 
     <div class="diff-row">
@@ -325,6 +399,7 @@
     <div class="topbar">
       <button class="icon-btn" id="btn-back" title="Voltar ao início">←</button>
       <div class="pill">⏱ <span id="timer">00:00</span></div>
+      <div class="pill combo" id="combo-pill">🔥 <span id="combo">0</span></div>
       <div class="pill">🏆 <span id="score">0</span></div>
     </div>
 
@@ -347,6 +422,10 @@
     <div class="win-card">
       <div class="emoji">🐭🎉</div>
       <h2>Resolvido!</h2>
+      <div class="stars-row" id="win-stars">
+        <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
+      </div>
+      <div class="win-combo">Melhor combo: <b id="win-combo">0</b> 🔥</div>
       <div class="win-stats">
         <div><div class="num" id="win-time">00:00</div><div class="lbl">Tempo</div></div>
         <div><div class="num" id="win-moves">0</div><div class="lbl">Jogadas</div></div>
@@ -355,6 +434,22 @@
       <button class="btn-primary" id="btn-again">Jogar outra vez</button>
     </div>
   </main>
+
+  <!-- ===== Camada de cards de conquista ===== -->
+  <div id="achv-layer"></div>
+
+  <!-- ===== Modal de confirmação genérico ===== -->
+  <div id="modal-overlay" class="hidden">
+    <div class="modal-card">
+      <div class="modal-icon" id="modal-icon">⚠️</div>
+      <h3 id="modal-title">Título</h3>
+      <p id="modal-text">Texto</p>
+      <div class="modal-actions">
+        <button id="modal-cancel">Cancelar</button>
+        <button id="modal-confirm">Confirmar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===== Overlay do tutorial (5 passos) ===== -->
   <div id="tutorial-overlay" class="hidden">
@@ -375,11 +470,47 @@
 <script>
 /* =========================================================================
    Ratodoku — mecânica central do Meowdoku (Sudoku 6x6, blocos 2x3),
-   tema ratinhos. Arquitetura em 3 camadas:
-   1) Estado e lógica pura do puzzle (gera, valida, verifica vitória)
-   2) Renderização (desenha tabuleiro/painel a partir do estado)
-   3) Controlador de fluxo (ecrãs: início -> jogo -> vitória)
+   tema ratinhos. Arquitetura em módulos:
+   0) Storage    — leitura/escrita persistente (localStorage), tolerante a falhas
+   1) Game       — estado e lógica pura do puzzle (gera, valida, pontua)
+   2) UI         — renderização do tabuleiro/painel/HUD a partir do estado
+   3) FX         — feedback visual: toasts, cards de conquista, micro-animações
+   4) Modal      — diálogo de confirmação genérico (sair / recomeçar)
+   5) Tutorial   — passo-a-passo guiado com spotlight real sobre a UI
+   6) Controller — fluxo entre ecrãs e ligação dos eventos de utilizador
    ========================================================================= */
+
+/* ---------- 0) Storage ---------- */
+
+const Storage = {
+  get(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch (e) { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  },
+};
+
+const Profile = {
+  key: 'ratodoku_profile',
+  data: null,
+
+  load() {
+    this.data = Storage.get(this.key, { totalStars: 0, gamesPlayed: 0, bestCombo: 0 });
+    return this.data;
+  },
+  save() { Storage.set(this.key, this.data); },
+
+  registerWin(stars, combo) {
+    this.data.totalStars += stars;
+    this.data.gamesPlayed += 1;
+    this.data.bestCombo = Math.max(this.data.bestCombo, combo);
+    this.save();
+  },
+};
 
 const SIZE = 6;
 const BLOCK_R = 2, BLOCK_C = 3;
@@ -423,6 +554,9 @@ const Game = {
   timerInterval: null,
   solved: false,
   difficulty: 'facil',
+  combo: 0,
+  bestCombo: 0,
+  errorsCount: 0,
 
   removalRate() {
     return { facil: 0.42, medio: 0.55, dificil: 0.68 }[this.difficulty];
@@ -465,6 +599,9 @@ const Game = {
     this.selected = null;
     this.moves = 0;
     this.solved = false;
+    this.combo = 0;
+    this.bestCombo = 0;
+    this.errorsCount = 0;
     this.startTime = Date.now();
   },
 
@@ -514,7 +651,21 @@ const Game = {
     const base = 1000;
     const timePenalty = this.elapsedSeconds() * 2;
     const movePenalty = Math.max(0, this.moves - 30) * 5;
-    return Math.max(100, base - timePenalty - movePenalty);
+    const comboBonus = this.bestCombo * 15;
+    const errorPenalty = this.errorsCount * 20;
+    return Math.max(100, base - timePenalty - movePenalty + comboBonus - errorPenalty);
+  },
+
+  // 1 a 3 estrelas: cruza tempo e erros cometidos (não só velocidade — pune repetição de conflitos).
+  starsForResult() {
+    const thresholds = {
+      facil: [60, 2], medio: [120, 3], dificil: [180, 5],
+    }[this.difficulty];
+    const [timeLimit, errorLimit] = thresholds;
+    const t = this.elapsedSeconds();
+    if (t <= timeLimit && this.errorsCount <= 1) return 3;
+    if (t <= timeLimit * 1.8 && this.errorsCount <= errorLimit) return 2;
+    return 1;
   },
 };
 
@@ -525,6 +676,8 @@ const UI = {
   padEl: document.getElementById('pad'),
   timerEl: document.getElementById('timer'),
   scoreEl: document.getElementById('score'),
+  comboEl: document.getElementById('combo'),
+  comboPillEl: document.getElementById('combo-pill'),
   toastEl: document.getElementById('toast'),
 
   renderBoard() {
@@ -577,6 +730,13 @@ const UI = {
     this.scoreEl.textContent = Game.computeScore();
   },
 
+  updateCombo() {
+    this.comboEl.textContent = Game.combo;
+    gsap.fromTo(this.comboPillEl, { scale: 1 }, {
+      scale: 1.22, duration: .12, yoyo: true, repeat: 1, ease: 'power1.inOut',
+    });
+  },
+
   flashToast(msg) {
     this.toastEl.textContent = msg;
     gsap.fromTo(this.toastEl, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: .25 });
@@ -594,9 +754,75 @@ const UI = {
     const el = this.boardEl.children[idx];
     if (el) gsap.fromTo(el, { x: -4 }, { x: 0, duration: .32, ease: 'elastic.out(1, .4)' });
   },
+
+  renderProfile() {
+    const p = Profile.data;
+    document.getElementById('profile-pill').textContent = `⭐ ${p.totalStars} · 🎮 ${p.gamesPlayed} jogos`;
+  },
+
+  renderStars(n) {
+    const stars = document.querySelectorAll('#win-stars .star');
+    gsap.set(stars, { clearProps: 'all' });
+    stars.forEach((s, i) => s.classList.toggle('earned', i < n));
+    const tl = gsap.timeline();
+    stars.forEach((s, i) => {
+      if (i < n) {
+        tl.to(s, { scale: 1, opacity: 1, duration: .4, ease: 'back.out(3)' }, i * .18);
+      }
+    });
+  },
 };
 
-/* ---------- 3) Controlador de fluxo ---------- */
+/* ---------- 3) FX: cards de conquista ---------- */
+
+const FX = {
+  layer: document.getElementById('achv-layer'),
+
+  achievement(icon, text) {
+    const card = document.createElement('div');
+    card.className = 'achv-card';
+    card.innerHTML = `<span class="achv-icon">${icon}</span><span>${text}</span>`;
+    this.layer.appendChild(card);
+    gsap.fromTo(card, { y: -30, opacity: 0, scale: .85 }, { y: 0, opacity: 1, scale: 1, duration: .35, ease: 'back.out(2.5)' });
+    gsap.to(card, {
+      y: -10, opacity: 0, duration: .3, delay: 1.8, ease: 'power1.in',
+      onComplete: () => card.remove(),
+    });
+  },
+};
+
+/* ---------- 4) Modal genérico de confirmação ---------- */
+
+const Modal = {
+  overlay: document.getElementById('modal-overlay'),
+
+  confirm({ icon = '⚠️', title, text, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = true, onConfirm }) {
+    document.getElementById('modal-icon').textContent = icon;
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-text').textContent = text;
+    const confirmBtn = document.getElementById('modal-confirm');
+    const cancelBtn = document.getElementById('modal-cancel');
+    confirmBtn.textContent = confirmLabel;
+    cancelBtn.textContent = cancelLabel;
+    confirmBtn.style.background = danger ? 'var(--error-ic)' : 'var(--success)';
+
+    this.overlay.classList.remove('hidden');
+    gsap.fromTo('.modal-card', { scale: .9, opacity: 0 }, { scale: 1, opacity: 1, duration: .25, ease: 'back.out(2)' });
+
+    const cleanup = () => {
+      this.overlay.classList.add('hidden');
+      confirmBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onOk = () => { cleanup(); onConfirm && onConfirm(); };
+    const onCancel = () => cleanup();
+
+    confirmBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  },
+};
+
+/* ---------- 5) Controlador de fluxo ---------- */
 
 const Controller = {
   screens: {
@@ -611,6 +837,7 @@ const Controller = {
     const target = this.screens[name];
     target.classList.add('active');
     gsap.fromTo(target, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .35, ease: 'power2.out' });
+    if (name === 'start') UI.renderProfile();
   },
 
   startGame() {
@@ -619,6 +846,7 @@ const Controller = {
     UI.renderPad();
     UI.updateTimer();
     UI.updateScore();
+    UI.comboEl.textContent = '0';
     this.goTo('game');
     if (Game.timerInterval) clearInterval(Game.timerInterval);
     Game.timerInterval = setInterval(() => {
@@ -651,7 +879,19 @@ const Controller = {
     if (!ok) return;
     UI.renderBoard();
     UI.bounceCell(r, c);
-    if (Game.hasConflict(r, c, val)) UI.shakeCell(r, c);
+
+    if (Game.hasConflict(r, c, val)) {
+      UI.shakeCell(r, c);
+      Game.errorsCount++;
+      Game.combo = 0;
+      UI.updateCombo();
+    } else {
+      Game.combo++;
+      Game.bestCombo = Math.max(Game.bestCombo, Game.combo);
+      UI.updateCombo();
+      if (Game.combo === 5) FX.achievement('🔥', 'Combo x5! Continua assim!');
+      if (Game.combo === 10) FX.achievement('⚡', 'Combo x10 — imparável!');
+    }
     this.checkWin();
   },
 
@@ -668,11 +908,57 @@ const Controller = {
     clearInterval(Game.timerInterval);
     const finalTime = UI.updateTimer();
     const finalScore = Game.computeScore();
+    const stars = Game.starsForResult();
+
     document.getElementById('win-time').textContent = finalTime;
     document.getElementById('win-moves').textContent = Game.moves;
     document.getElementById('win-score').textContent = finalScore;
+    document.getElementById('win-combo').textContent = Game.bestCombo;
+
+    Profile.registerWin(stars, Game.bestCombo);
     this.goTo('win');
+    UI.renderStars(stars);
     confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
+
+    if (Game.errorsCount === 0) {
+      setTimeout(() => FX.achievement('🏅', 'Perfeito! Resolvido sem nenhum erro.'), 500);
+    } else if (Game.elapsedSeconds() < 60) {
+      setTimeout(() => FX.achievement('⚡', 'Resolvido em menos de 1 minuto!'), 500);
+    }
+  },
+
+  confirmExit() {
+    if (!Game.solved && Game.moves > 0) {
+      Modal.confirm({
+        icon: '🚪',
+        title: 'Sair do jogo?',
+        text: 'O teu progresso neste puzzle vai perder-se. Tens a certeza que queres voltar ao início?',
+        confirmLabel: 'Sair',
+        cancelLabel: 'Continuar a jogar',
+        onConfirm: () => {
+          clearInterval(Game.timerInterval);
+          this.goTo('start');
+        },
+      });
+    } else {
+      clearInterval(Game.timerInterval);
+      this.goTo('start');
+    }
+  },
+
+  confirmNewPuzzle() {
+    if (!Game.solved && Game.moves > 0) {
+      Modal.confirm({
+        icon: '🔁',
+        title: 'Começar outro puzzle?',
+        text: 'Vais perder o progresso do puzzle atual. Continuar?',
+        confirmLabel: 'Novo puzzle',
+        cancelLabel: 'Voltar',
+        onConfirm: () => this.startGame(),
+      });
+    } else {
+      this.startGame();
+    }
   },
 };
 
@@ -815,13 +1101,12 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
 });
 
 document.getElementById('btn-play').addEventListener('click', () => Controller.startGame());
-document.getElementById('btn-back').addEventListener('click', () => {
-  clearInterval(Game.timerInterval);
-  Controller.goTo('start');
-});
+document.getElementById('btn-back').addEventListener('click', () => Controller.confirmExit());
 document.getElementById('btn-erase').addEventListener('click', () => Controller.eraseSelected());
-document.getElementById('btn-new').addEventListener('click', () => Controller.startGame());
+document.getElementById('btn-new').addEventListener('click', () => Controller.confirmNewPuzzle());
 document.getElementById('btn-again').addEventListener('click', () => Controller.startGame());
+
+Profile.load();
 
 document.addEventListener('keydown', (e) => {
   if (Controller.screens.game.classList.contains('active')) {
