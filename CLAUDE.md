@@ -38,18 +38,20 @@ Jogo de lógica tipo Sudoku simplificado:
 
 ## 4. Stack técnica
 
-- HTML + CSS + JS puro, um único ficheiro `index.html` (sem build, sem dependências) — compatível com deploy estático imediato.
-- Deploy: **GitHub Pages** a partir deste repositório (`EduardoMuangala/GAME`), branch `main`.
+- HTML + CSS + JS puro, um único ficheiro `index.html` (sem build, sem dependências).
+- Bibliotecas externas via CDN: GSAP (animações/transições de ecrã), canvas-confetti (celebração na vitória), Google Fonts "Fredoka".
+- Deploy: **Vercel**, importado diretamente do repositório `EduardoMuangala/GAME`, branch `main` (deploy automático a cada push).
+- Link público: **https://game-alpha-one-18.vercel.app/**
 
 ## 5. Plano de passos (sequência de trabalho)
 
 1. [x] Repositório `GAME` criado e clonado.
 2. [x] Escolha do jogo de referência (Meowdoku) e da mecânica principal.
-3. [ ] Confirmar tema final (rato) e ajustar o protótipo existente (trocar emojis/skin de gato → rato, atualizar textos/título).
-4. [ ] Rever o protótipo (grelha 6×6, validação, timer, vitória) — ajustar o que for preciso.
-5. [ ] Commit + push para `main`.
-6. [ ] Ativar GitHub Pages no repositório e obter o link público.
-7. [ ] Testar o link publicado (sem localhost).
+3. [x] Tema final confirmado (rato) e protótipo reescrito com design acessível (cor + forma + número, nunca só cor).
+4. [x] Protótipo revisto: grelha 6×6, blocos 2×3, dificuldade (fácil/médio/difícil), validação em tempo real, timer, pontuação, ecrã de vitória com confetti.
+5. [x] Commit + push para `main` (CLAUDE.md + index.html).
+6. [x] Deploy no Vercel e link público obtido.
+7. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
 8. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
 9. [ ] Escrever as 5 respostas curtas.
 10. [ ] Preparar registo de prompts completo (esta conversa).
@@ -57,6 +59,5 @@ Jogo de lógica tipo Sudoku simplificado:
 
 ## 6. Notas para a próxima sessão/IA
 
-- Não avançar para implementação sem confirmação explícita do dono do projeto nos pontos ainda em aberto.
 - Língua do projeto e commits: **português**.
-- Existe um ficheiro `index.html` já rascunhado no repositório (ainda não commitado) com a mecânica em tema "gato" — serve de base, mas tem de ser adaptado para o tema "rato" antes do commit.
+- Cada push para `main` dispara deploy automático no Vercel — não é preciso nenhum passo manual de deploy a partir daqui.
