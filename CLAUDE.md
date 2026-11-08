@@ -40,6 +40,8 @@ Jogo de lógica tipo Sudoku simplificado:
 - **Progressão de veículos:** a mesma mecânica ganha um "casco" visual diferente por nível — Carruagem (nível 1, sempre disponível), Avião (nível 2, desbloqueia aos 15 ⭐ acumuladas), Navio (nível 3, desbloqueia aos 30 ⭐). Cada veículo tem cor própria, janelas com forma distinta (retangular/oval/vigia redonda) e crachá de identificação (ex: "Voo PD-204"). Pensado para, no futuro, expandir ainda mais meios de transporte como forma de progressão de longo prazo.
 - **A grelha também cresce por nível** (não é só estética): Carruagem = 4×4 (blocos 2×2, mais fácil/pequena — boa entrada para quem não joga Sudoku), Avião = 6×6 (blocos 2×3, o tamanho original), Navio = 8×8 (blocos 2×4, maior e mais difícil, com os 8 passageiros/cores disponíveis). O tamanho da célula, do painel e os limiares de estrelas (tempo) escalam automaticamente consoante a grelha, para o Navio não ser penalizado só por ter mais casas a preencher.
 
+- **Internacionalização (i18n):** interface traduzível, hoje em PT/EN/FR, com arquitetura pensada para crescer até 10+ idiomas sem mudar código — só acrescentar entradas ao dicionário. Seletor de bandeiras (🇵🇹/🇬🇧/🇫🇷) no menu; a escolha fica persistente entre sessões.
+
 **Não entra (fora do âmbito de 4h):**
 - Loja, anúncios reais, som, multiplayer, conta de utilizador, backend.
 
@@ -63,15 +65,18 @@ Jogo de lógica tipo Sudoku simplificado:
 8. [x] Deploy no Vercel e link público obtido; deploy automático a cada push.
 9. [x] Botão "Ver tutorial" sempre disponível durante o jogo (reabre sem perder progresso nem tempo).
 10. [x] Progressão de veículos (Carruagem → Avião → Navio) com casco visual próprio e desbloqueio por estrelas.
-11. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
-12. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
-13. [ ] Escrever as 5 respostas curtas (mencionar o raciocínio de público-alvo via transportes públicos e a progressão de veículos como gancho de retenção a longo prazo).
-14. [ ] Preparar registo de prompts completo (esta conversa).
-15. [ ] Enviar tudo para `hr@infinitygames.io`.
+11. [x] Grelha cresce por nível de veículo (4×4 → 6×6 → 8×8), com tutorial, estrelas e UI a escalarem automaticamente.
+12. [x] Internacionalização: PT/EN/FR com seletor de idioma persistente, arquitetura extensível a 10+ idiomas.
+13. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
+14. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
+15. [ ] Escrever as 5 respostas curtas (mencionar o raciocínio de público-alvo via transportes públicos, a progressão de veículos e a i18n como ganchos de retenção/alcance a longo prazo).
+16. [ ] Preparar registo de prompts completo (esta conversa).
+17. [ ] Enviar tudo para `hr@infinitygames.io`.
 
 ## 6. Notas para a próxima sessão/IA
 
 - Língua do projeto e commits: **português**.
 - Cada push para `main` dispara deploy automático no Vercel — não é preciso nenhum passo manual de deploy a partir daqui.
 - Chaves de `localStorage` usadas: `passengerdoku_profile` (estrelas totais, jogos jogados, melhor combo, veículo selecionado) e `passengerdoku_tutorial_seen` (evita repetir o tutorial automaticamente, mas não impede reabri-lo manualmente). Chaves antigas (`ratodoku_*`) ficaram órfãs em navegadores que já tinham aberto a versão anterior — sem impacto, apenas dados obsoletos.
-- Catálogo de veículos em `VEHICLES` (dentro do `<script>`): acrescentar um novo nível é só adicionar um objeto `{ id, icon, name, badge, winText, unlockStars, size, blockR, blockC }` e as duas regras CSS `.vehicle-shell.veh-<id>` (cor do casco) + `.vehicle-shell.veh-<id> .vehicle-windows span` (forma da janela). `size × size` tem de ser divisível em blocos `blockR × blockC` (ex: 8 = 2×4) e `PASSENGERS` precisa de ter pelo meno `size` cores — hoje tem 8, chega até um hipotético nível 4 de 8×8 com blocos diferentes, mas não mais do que isso sem acrescentar cores novas.
+- Catálogo de veículos em `VEHICLES` (dentro do `<script>`): acrescentar um novo nível é só adicionar um objeto `{ id, icon, unlockStars, size, blockR, blockC }` (nome/crachá/frase de vitória vivem no `I18N`, não aqui) e as duas regras CSS `.vehicle-shell.veh-<id>` (cor do casco) + `.vehicle-shell.veh-<id> .vehicle-windows span` (forma da janela). `size × size` tem de ser divisível em blocos `blockR × blockC` (ex: 8 = 2×4) e `PASSENGERS` precisa de ter pelo menos `size` cores — hoje tem 8, chega até um hipotético nível 4 de 8×8 com blocos diferentes, mas não mais do que isso sem acrescentar cores novas.
+- **I18N (`const I18N` no `<script>`):** `I18N.langs` é a lista mostrada no seletor (código, bandeira, rótulo); `I18N.dict.<code>` tem todas as chaves de texto do jogo. Acrescentar um idioma novo = copiar um bloco inteiro de `dict` (ex: `dict.en`) e traduzir os valores — nenhuma outra mudança de código é precisa. `I18N.t(key, vars)` faz a interpolação de `{var}`; `I18N.setLang(code)` troca o idioma ativo, persiste em `localStorage` (`passengerdoku_lang`) e re-renderiza o que estiver visível. Texto gerado dinamicamente (tutorial, modais, conquistas, nomes/crachás de veículo) já usa sempre `I18N.t(...)` — ao adicionar uma funcionalidade nova com texto visível, a chave tem de ir para os três blocos do `dict` (pt/en/fr), nunca escrita diretamente em português no meio do código.

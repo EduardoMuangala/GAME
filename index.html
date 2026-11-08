@@ -202,6 +202,25 @@
   .vehicle-card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
   .vehicle-card.locked { opacity: .55; }
 
+  /* ---------- Seletor de idioma ---------- */
+  .lang-row { display: flex; gap: 6px; justify-content: center; margin-bottom: 2px; }
+  .lang-btn {
+    border: 2px solid transparent;
+    background: #fff;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: .76rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-soft);
+    box-shadow: 0 2px 6px var(--shadow);
+  }
+  .lang-btn.selected { border-color: var(--accent); color: var(--text); }
+
   #board {
     display: grid;
     gap: 3px;
@@ -443,10 +462,12 @@
 
   <!-- ===== Ecrã inicial ===== -->
   <main class="screen" id="screen-start">
+    <div class="lang-row" id="lang-row"></div>
+
     <div class="logo-icon">🚆</div>
     <h1>PassengerDoku</h1>
     <div class="pill" id="profile-pill" style="font-size:.85rem;">⭐ 0 · 🎮 0 jogos</div>
-    <p class="tagline">O quebra-cabeça lógico dos passageiros. Preenche o veículo sem repetir nenhum passageiro na mesma linha, coluna ou bloco.</p>
+    <p class="tagline" id="tagline">O quebra-cabeça lógico dos passageiros. Preenche o veículo sem repetir nenhum passageiro na mesma linha, coluna ou bloco.</p>
 
     <div class="vehicle-row" id="vehicle-row"></div>
 
@@ -459,9 +480,9 @@
     <button class="btn-primary" id="btn-play">Jogar ▶</button>
 
     <div class="howto">
-      <b>Como jogar:</b> toca num lugar vazio, depois escolhe um passageiro no painel.
+      <b id="howto-label">Como jogar:</b><span id="howto-body"> toca num lugar vazio, depois escolhe um passageiro no painel.
       Cada passageiro só pode aparecer uma vez por linha, coluna e bloco.
-      Sem repetições = veículo completo. Veículos maiores têm grelhas maiores!
+      Sem repetições = veículo completo. Veículos maiores têm grelhas maiores!</span>
     </div>
   </main>
 
@@ -502,11 +523,11 @@
       <div class="stars-row" id="win-stars">
         <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
       </div>
-      <div class="win-combo">Melhor combo: <b id="win-combo">0</b> 🔥</div>
+      <div class="win-combo"><span id="win-best-combo-label">Melhor combo:</span> <b id="win-combo">0</b> 🔥</div>
       <div class="win-stats">
-        <div><div class="num" id="win-time">00:00</div><div class="lbl">Tempo</div></div>
-        <div><div class="num" id="win-moves">0</div><div class="lbl">Jogadas</div></div>
-        <div><div class="num" id="win-score">0</div><div class="lbl">Pontos</div></div>
+        <div><div class="num" id="win-time">00:00</div><div class="lbl" id="win-lbl-time">Tempo</div></div>
+        <div><div class="num" id="win-moves">0</div><div class="lbl" id="win-lbl-moves">Jogadas</div></div>
+        <div><div class="num" id="win-score">0</div><div class="lbl" id="win-lbl-score">Pontos</div></div>
       </div>
       <button class="btn-primary" id="btn-again">Jogar outra vez</button>
     </div>
@@ -594,10 +615,196 @@ const Profile = {
 // Progressão de veículos: a mesma mecânica (6x6, blocos 2x3) ganha um casco e nome
 // diferentes a cada nível, desbloqueado por estrelas acumuladas — prepara a expansão
 // futura do tema "passageiro" para outros meios de transporte.
+/* ---------- I18N: traduções ---------- */
+// Arquitetura pensada para crescer além de pt/en/fr: cada idioma é só mais uma
+// entrada em `dict` com as mesmas chaves, e `langs` é a lista mostrada no seletor
+// do menu. Acrescentar um 11º idioma é copiar um bloco de `dict` e traduzir os valores.
+
+const I18N = {
+  current: 'pt',
+
+  langs: [
+    { code: 'pt', flag: '🇵🇹', label: 'PT' },
+    { code: 'en', flag: '🇬🇧', label: 'EN' },
+    { code: 'fr', flag: '🇫🇷', label: 'FR' },
+  ],
+
+  dict: {
+    pt: {
+      tagline: 'O quebra-cabeça lógico dos passageiros. Preenche o veículo sem repetir nenhum passageiro na mesma linha, coluna ou bloco.',
+      howto_label: 'Como jogar:',
+      howto_body: 'toca num lugar vazio, depois escolhe um passageiro no painel. Cada passageiro só pode aparecer uma vez por linha, coluna e bloco. Sem repetições = veículo completo. Veículos maiores têm grelhas maiores!',
+      diff_facil: 'Fácil', diff_medio: 'Médio', diff_dificil: 'Difícil',
+      btn_play: 'Jogar ▶',
+      btn_back_title: 'Voltar ao início',
+      btn_erase: '🧽 Apagar',
+      btn_new: '🔁 Novo puzzle',
+      btn_tutorial: '❓ Ver tutorial',
+      toast_select_cell: 'Seleciona primeiro um lugar vazio 🚆',
+      profile_pill: '⭐ {stars} · 🎮 {games} jogos',
+      vehicle_train_name: 'Carruagem', vehicle_plane_name: 'Avião', vehicle_ship_name: 'Navio',
+      vehicle_train_badge: 'Carruagem 12', vehicle_plane_badge: 'Voo PD-204', vehicle_ship_badge: 'Convés Principal',
+      vehicle_train_win: 'Carruagem completa!', vehicle_plane_win: 'Avião completo!', vehicle_ship_win: 'Navio completo!',
+      vehicle_train_art: 'a carruagem', vehicle_plane_art: 'o avião', vehicle_ship_art: 'o navio',
+      vehicle_locked_title: '{name} bloqueado',
+      vehicle_locked_text: 'Faltam {missing} ⭐ para desbloquear {art}. Continua a resolver puzzles para ganhar estrelas!',
+      generic_ok: 'Entendido', generic_close: 'Fechar',
+      exit_title: 'Sair do jogo?',
+      exit_text: 'O teu progresso neste puzzle vai perder-se. Tens a certeza que queres voltar ao início?',
+      exit_confirm: 'Sair', exit_cancel: 'Continuar a jogar',
+      newpuzzle_title: 'Começar outro puzzle?',
+      newpuzzle_text: 'Vais perder o progresso do puzzle atual. Continuar?',
+      newpuzzle_confirm: 'Novo puzzle', newpuzzle_cancel: 'Voltar',
+      win_time: 'Tempo', win_moves: 'Jogadas', win_score: 'Pontos',
+      win_best_combo: 'Melhor combo:',
+      win_play_again: 'Jogar outra vez',
+      achv_combo5: 'Combo x5! Continua assim!',
+      achv_combo10: 'Combo x10 — imparável!',
+      achv_perfect: 'Perfeito! Resolvido sem nenhum erro.',
+      achv_fast: 'Resolvido em menos de 1 minuto!',
+      tt_step_label: 'Passo {i} de {n}',
+      tt_next: 'Seguinte', tt_start: 'Começar a jogar!', tt_skip: 'Saltar',
+      tt1: 'Bem-vindo a bordo! Este é o teu veículo {size}×{size}. O objetivo é preenchê-lo todo com passageiros — sem deixar nenhum lugar vazio.',
+      tt2: 'Regra 1: cada passageiro só pode aparecer uma vez em cada LINHA. Repara nesta linha de destaque.',
+      tt3: 'Regra 2: o mesmo vale para cada COLUNA — nunca repitas o mesmo passageiro na mesma coluna.',
+      tt4: 'Regra 3: e também dentro de cada BLOCO {blockR}×{blockC} (separado por linhas mais grossas no veículo).',
+      tt5: 'Toca num lugar vazio e depois escolhe um passageiro aqui em baixo. Se repetires um passageiro sem querer, o lugar fica vermelho. Preenche tudo sem erros para venceres! Boa viagem 🚆',
+    },
+    en: {
+      tagline: 'The passengers\' logic puzzle. Fill the vehicle without repeating any passenger in the same row, column or block.',
+      howto_label: 'How to play:',
+      howto_body: 'tap an empty seat, then pick a passenger from the panel. Each passenger can only appear once per row, column and block. No repeats = vehicle complete. Bigger vehicles have bigger grids!',
+      diff_facil: 'Easy', diff_medio: 'Medium', diff_dificil: 'Hard',
+      btn_play: 'Play ▶',
+      btn_back_title: 'Back to menu',
+      btn_erase: '🧽 Erase',
+      btn_new: '🔁 New puzzle',
+      btn_tutorial: '❓ View tutorial',
+      toast_select_cell: 'Select an empty seat first 🚆',
+      profile_pill: '⭐ {stars} · 🎮 {games} games',
+      vehicle_train_name: 'Train car', vehicle_plane_name: 'Plane', vehicle_ship_name: 'Ship',
+      vehicle_train_badge: 'Car 12', vehicle_plane_badge: 'Flight PD-204', vehicle_ship_badge: 'Main Deck',
+      vehicle_train_win: 'Train car complete!', vehicle_plane_win: 'Plane complete!', vehicle_ship_win: 'Ship complete!',
+      vehicle_train_art: 'the train car', vehicle_plane_art: 'the plane', vehicle_ship_art: 'the ship',
+      vehicle_locked_title: '{name} locked',
+      vehicle_locked_text: '{missing} more ⭐ needed to unlock {art}. Keep solving puzzles to earn stars!',
+      generic_ok: 'Got it', generic_close: 'Close',
+      exit_title: 'Leave the game?',
+      exit_text: 'Your progress on this puzzle will be lost. Are you sure you want to go back to the menu?',
+      exit_confirm: 'Leave', exit_cancel: 'Keep playing',
+      newpuzzle_title: 'Start another puzzle?',
+      newpuzzle_text: 'You will lose progress on the current puzzle. Continue?',
+      newpuzzle_confirm: 'New puzzle', newpuzzle_cancel: 'Go back',
+      win_time: 'Time', win_moves: 'Moves', win_score: 'Score',
+      win_best_combo: 'Best combo:',
+      win_play_again: 'Play again',
+      achv_combo5: 'Combo x5! Keep it up!',
+      achv_combo10: 'Combo x10 — unstoppable!',
+      achv_perfect: 'Perfect! Solved with no mistakes.',
+      achv_fast: 'Solved in under a minute!',
+      tt_step_label: 'Step {i} of {n}',
+      tt_next: 'Next', tt_start: 'Start playing!', tt_skip: 'Skip',
+      tt1: 'Welcome aboard! This is your {size}×{size} vehicle. The goal is to fill it completely with passengers — no empty seats left.',
+      tt2: 'Rule 1: each passenger can only appear once per ROW. Look at this highlighted row.',
+      tt3: 'Rule 2: same goes for each COLUMN — never repeat the same passenger in a column.',
+      tt4: 'Rule 3: and also inside each {blockR}×{blockC} BLOCK (marked by thicker lines on the vehicle).',
+      tt5: 'Tap an empty seat, then pick a passenger down here. If you repeat one by mistake, the seat turns red. Fill everything with no mistakes to win! Safe travels 🚆',
+    },
+    fr: {
+      tagline: 'Le casse-tête logique des passagers. Remplis le véhicule sans répéter aucun passager sur la même ligne, colonne ou bloc.',
+      howto_label: 'Comment jouer :',
+      howto_body: 'touche une place vide, puis choisis un passager dans le panneau. Chaque passager ne peut apparaître qu\'une fois par ligne, colonne et bloc. Aucune répétition = véhicule complet. Les véhicules plus grands ont des grilles plus grandes !',
+      diff_facil: 'Facile', diff_medio: 'Moyen', diff_dificil: 'Difficile',
+      btn_play: 'Jouer ▶',
+      btn_back_title: 'Retour au menu',
+      btn_erase: '🧽 Effacer',
+      btn_new: '🔁 Nouvelle grille',
+      btn_tutorial: '❓ Voir le tutoriel',
+      toast_select_cell: 'Sélectionne d\'abord une place vide 🚆',
+      profile_pill: '⭐ {stars} · 🎮 {games} parties',
+      vehicle_train_name: 'Wagon', vehicle_plane_name: 'Avion', vehicle_ship_name: 'Navire',
+      vehicle_train_badge: 'Wagon 12', vehicle_plane_badge: 'Vol PD-204', vehicle_ship_badge: 'Pont Principal',
+      vehicle_train_win: 'Wagon complet !', vehicle_plane_win: 'Avion complet !', vehicle_ship_win: 'Navire complet !',
+      vehicle_train_art: 'le wagon', vehicle_plane_art: "l'avion", vehicle_ship_art: 'le navire',
+      vehicle_locked_title: '{name} verrouillé',
+      vehicle_locked_text: 'Il manque {missing} ⭐ pour débloquer {art}. Continue à résoudre des grilles pour gagner des étoiles !',
+      generic_ok: 'Compris', generic_close: 'Fermer',
+      exit_title: 'Quitter la partie ?',
+      exit_text: 'Ta progression sur cette grille sera perdue. Es-tu sûr de vouloir revenir au menu ?',
+      exit_confirm: 'Quitter', exit_cancel: 'Continuer à jouer',
+      newpuzzle_title: 'Commencer une autre grille ?',
+      newpuzzle_text: 'Tu vas perdre la progression de la grille actuelle. Continuer ?',
+      newpuzzle_confirm: 'Nouvelle grille', newpuzzle_cancel: 'Retour',
+      win_time: 'Temps', win_moves: 'Coups', win_score: 'Points',
+      win_best_combo: 'Meilleur combo :',
+      win_play_again: 'Rejouer',
+      achv_combo5: 'Combo x5 ! Continue comme ça !',
+      achv_combo10: 'Combo x10 — imparable !',
+      achv_perfect: 'Parfait ! Résolu sans aucune erreur.',
+      achv_fast: 'Résolu en moins d\'une minute !',
+      tt_step_label: 'Étape {i} sur {n}',
+      tt_next: 'Suivant', tt_start: 'Commencer à jouer !', tt_skip: 'Passer',
+      tt1: 'Bienvenue à bord ! Voici ton véhicule {size}×{size}. L\'objectif est de le remplir entièrement de passagers — sans laisser de place vide.',
+      tt2: 'Règle 1 : chaque passager ne peut apparaître qu\'une fois par LIGNE. Regarde cette ligne en surbrillance.',
+      tt3: 'Règle 2 : pareil pour chaque COLONNE — ne répète jamais le même passager dans une colonne.',
+      tt4: 'Règle 3 : et aussi à l\'intérieur de chaque BLOC {blockR}×{blockC} (séparé par des lignes plus épaisses sur le véhicule).',
+      tt5: 'Touche une place vide, puis choisis un passager ici en bas. Si tu répètes un passager par erreur, la place devient rouge. Remplis tout sans erreur pour gagner ! Bon voyage 🚆',
+    },
+  },
+
+  t(key, vars) {
+    const table = this.dict[this.current] || this.dict.pt;
+    let s = (table && table[key] !== undefined) ? table[key] : (this.dict.pt[key] !== undefined ? this.dict.pt[key] : key);
+    if (vars) {
+      Object.keys(vars).forEach(k => { s = s.split('{' + k + '}').join(vars[k]); });
+    }
+    return s;
+  },
+
+  setLang(code) {
+    if (!this.dict[code]) return;
+    this.current = code;
+    Storage.set('passengerdoku_lang', code);
+    this.applyStatic();
+    UI.renderLangSelector();
+    if (Controller.screens.start.classList.contains('active')) {
+      UI.renderProfile();
+      UI.renderVehicleSelector();
+    }
+    if (Controller.screens.game.classList.contains('active')) {
+      UI.applyVehicleShell();
+    }
+  },
+
+  // Textos estáticos do HTML (os que não dependem de estado do jogo).
+  applyStatic() {
+    document.getElementById('tagline').textContent = this.t('tagline');
+    document.getElementById('howto-label').textContent = this.t('howto_label');
+    document.getElementById('howto-body').textContent = ' ' + this.t('howto_body');
+    document.querySelector('[data-diff="facil"]').textContent = this.t('diff_facil');
+    document.querySelector('[data-diff="medio"]').textContent = this.t('diff_medio');
+    document.querySelector('[data-diff="dificil"]').textContent = this.t('diff_dificil');
+    document.getElementById('btn-play').textContent = this.t('btn_play');
+    document.getElementById('btn-back').title = this.t('btn_back_title');
+    document.getElementById('btn-erase').textContent = this.t('btn_erase');
+    document.getElementById('btn-new').textContent = this.t('btn_new');
+    document.getElementById('btn-tutorial').textContent = this.t('btn_tutorial');
+    document.getElementById('win-best-combo-label').textContent = this.t('win_best_combo');
+    document.getElementById('win-lbl-time').textContent = this.t('win_time');
+    document.getElementById('win-lbl-moves').textContent = this.t('win_moves');
+    document.getElementById('win-lbl-score').textContent = this.t('win_score');
+    document.getElementById('btn-again').textContent = this.t('win_play_again');
+    document.getElementById('tt-skip').textContent = this.t('tt_skip');
+  },
+};
+
+// Progressão de veículos: a mesma mecânica (6x6, blocos 2x3) ganha um casco e nome
+// diferentes a cada nível, desbloqueado por estrelas acumuladas — prepara a expansão
+// futura do tema "passageiro" para outros meios de transporte.
 const VEHICLES = [
-  { id: 'train', icon: '🚆', name: 'Carruagem', badge: '🚆 Carruagem 12', winText: 'Carruagem completa!', unlockStars: 0, size: 4, blockR: 2, blockC: 2 },
-  { id: 'plane', icon: '✈️', name: 'Avião', badge: '✈️ Voo PD-204', winText: 'Avião completo!', unlockStars: 15, size: 6, blockR: 2, blockC: 3 },
-  { id: 'ship', icon: '🚢', name: 'Navio', badge: '🚢 Convés Principal', winText: 'Navio completo!', unlockStars: 30, size: 8, blockR: 2, blockC: 4 },
+  { id: 'train', icon: '🚆', unlockStars: 0, size: 4, blockR: 2, blockC: 2 },
+  { id: 'plane', icon: '✈️', unlockStars: 15, size: 6, blockR: 2, blockC: 3 },
+  { id: 'ship', icon: '🚢', unlockStars: 30, size: 8, blockR: 2, blockC: 4 },
 ];
 
 function vehicleById(id) {
@@ -872,7 +1079,20 @@ const UI = {
 
   renderProfile() {
     const p = Profile.data;
-    document.getElementById('profile-pill').textContent = `⭐ ${p.totalStars} · 🎮 ${p.gamesPlayed} jogos`;
+    document.getElementById('profile-pill').textContent =
+      I18N.t('profile_pill', { stars: p.totalStars, games: p.gamesPlayed });
+  },
+
+  renderLangSelector() {
+    const row = document.getElementById('lang-row');
+    row.innerHTML = '';
+    I18N.langs.forEach(l => {
+      const btn = document.createElement('button');
+      btn.className = 'lang-btn' + (l.code === I18N.current ? ' selected' : '');
+      btn.innerHTML = `<span>${l.flag}</span><span>${l.label}</span>`;
+      btn.addEventListener('click', () => I18N.setLang(l.code));
+      row.appendChild(btn);
+    });
   },
 
   renderVehicleSelector() {
@@ -881,11 +1101,12 @@ const UI = {
     row.innerHTML = '';
     VEHICLES.forEach(v => {
       const unlocked = stars >= v.unlockStars;
+      const name = I18N.t('vehicle_' + v.id + '_name');
       const card = document.createElement('button');
       card.className = 'vehicle-card' + (v.id === Game.vehicle ? ' selected' : '') + (unlocked ? '' : ' locked');
       card.innerHTML = `
         <span class="v-icon">${unlocked ? v.icon : '🔒'}</span>
-        <span class="v-name">${v.name}</span>
+        <span class="v-name">${name}</span>
         <span class="v-size">${v.size}×${v.size}</span>
         ${unlocked ? '' : `<span class="v-lock">⭐ ${v.unlockStars}</span>`}
       `;
@@ -898,7 +1119,8 @@ const UI = {
     const v = vehicleById(Game.vehicle);
     const shell = document.getElementById('vehicle-shell');
     shell.className = 'vehicle-shell veh-' + v.id;
-    document.getElementById('vehicle-badge').textContent = `${v.badge} · ${v.size}×${v.size}`;
+    document.getElementById('vehicle-badge').textContent =
+      `${v.icon} ${I18N.t('vehicle_' + v.id + '_badge')} · ${v.size}×${v.size}`;
 
     const windows = document.getElementById('vehicle-windows');
     windows.innerHTML = '';
@@ -1020,7 +1242,7 @@ const Controller = {
 
   onPadPress(val) {
     if (!Game.selected) {
-      UI.flashToast('Seleciona primeiro um lugar vazio 🚆');
+      UI.flashToast(I18N.t('toast_select_cell'));
       return;
     }
     const [r, c] = Game.selected;
@@ -1038,8 +1260,8 @@ const Controller = {
       Game.combo++;
       Game.bestCombo = Math.max(Game.bestCombo, Game.combo);
       UI.updateCombo();
-      if (Game.combo === 5) FX.achievement('🔥', 'Combo x5! Continua assim!');
-      if (Game.combo === 10) FX.achievement('⚡', 'Combo x10 — imparável!');
+      if (Game.combo === 5) FX.achievement('🔥', I18N.t('achv_combo5'));
+      if (Game.combo === 10) FX.achievement('⚡', I18N.t('achv_combo10'));
     }
     this.checkWin();
   },
@@ -1060,7 +1282,7 @@ const Controller = {
     const stars = Game.starsForResult();
 
     const veh = vehicleById(Game.vehicle);
-    document.getElementById('win-title').textContent = veh.winText;
+    document.getElementById('win-title').textContent = I18N.t('vehicle_' + veh.id + '_win');
     document.getElementById('win-emoji').textContent = veh.icon + '🎉';
     document.getElementById('win-time').textContent = finalTime;
     document.getElementById('win-moves').textContent = Game.moves;
@@ -1073,9 +1295,9 @@ const Controller = {
     confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
 
     if (Game.errorsCount === 0) {
-      setTimeout(() => FX.achievement('🏅', 'Perfeito! Resolvido sem nenhum erro.'), 500);
+      setTimeout(() => FX.achievement('🏅', I18N.t('achv_perfect')), 500);
     } else if (Game.elapsedSeconds() < 60) {
-      setTimeout(() => FX.achievement('⚡', 'Resolvido em menos de 1 minuto!'), 500);
+      setTimeout(() => FX.achievement('⚡', I18N.t('achv_fast')), 500);
     }
   },
 
@@ -1083,10 +1305,10 @@ const Controller = {
     if (!Game.solved && Game.moves > 0) {
       Modal.confirm({
         icon: '🚪',
-        title: 'Sair do jogo?',
-        text: 'O teu progresso neste puzzle vai perder-se. Tens a certeza que queres voltar ao início?',
-        confirmLabel: 'Sair',
-        cancelLabel: 'Continuar a jogar',
+        title: I18N.t('exit_title'),
+        text: I18N.t('exit_text'),
+        confirmLabel: I18N.t('exit_confirm'),
+        cancelLabel: I18N.t('exit_cancel'),
         onConfirm: () => {
           clearInterval(Game.timerInterval);
           this.goTo('start');
@@ -1102,10 +1324,10 @@ const Controller = {
     if (!Game.solved && Game.moves > 0) {
       Modal.confirm({
         icon: '🔁',
-        title: 'Começar outro puzzle?',
-        text: 'Vais perder o progresso do puzzle atual. Continuar?',
-        confirmLabel: 'Novo puzzle',
-        cancelLabel: 'Voltar',
+        title: I18N.t('newpuzzle_title'),
+        text: I18N.t('newpuzzle_text'),
+        confirmLabel: I18N.t('newpuzzle_confirm'),
+        cancelLabel: I18N.t('newpuzzle_cancel'),
         onConfirm: () => this.startGame(),
       });
     } else {
@@ -1116,12 +1338,13 @@ const Controller = {
   onVehiclePick(vehicle, unlocked) {
     if (!unlocked) {
       const missing = vehicle.unlockStars - Profile.data.totalStars;
+      const name = I18N.t('vehicle_' + vehicle.id + '_name');
       Modal.confirm({
         icon: '🔒',
-        title: `${vehicle.name} bloqueado`,
-        text: `Faltam ${missing} ⭐ para desbloquear o ${vehicle.name.toLowerCase()}. Continua a resolver puzzles para ganhar estrelas!`,
-        confirmLabel: 'Entendido',
-        cancelLabel: 'Fechar',
+        title: I18N.t('vehicle_locked_title', { name }),
+        text: I18N.t('vehicle_locked_text', { missing, art: I18N.t('vehicle_' + vehicle.id + '_art') }),
+        confirmLabel: I18N.t('generic_ok'),
+        cancelLabel: I18N.t('generic_close'),
         danger: false,
         onConfirm: () => {},
       });
@@ -1147,23 +1370,23 @@ const Tutorial = {
 
   steps: [
     {
-      text: () => `Bem-vindo a bordo! Este é o teu veículo ${SIZE}×${SIZE}. O objetivo é preenchê-lo todo com passageiros — sem deixar nenhum lugar vazio.`,
+      text: () => I18N.t('tt1', { size: SIZE }),
       target: () => document.getElementById('board'),
     },
     {
-      text: 'Regra 1: cada passageiro só pode aparecer uma vez em cada LINHA. Repara nesta linha de destaque.',
+      text: () => I18N.t('tt2'),
       target: () => cellsRange(0, allIndexes(SIZE)),
     },
     {
-      text: 'Regra 2: o mesmo vale para cada COLUNA — nunca repitas o mesmo passageiro na mesma coluna.',
+      text: () => I18N.t('tt3'),
       target: () => cellsRange(allIndexes(SIZE), 0),
     },
     {
-      text: () => `Regra 3: e também dentro de cada BLOCO ${BLOCK_R}×${BLOCK_C} (separado por linhas mais grossas no veículo).`,
+      text: () => I18N.t('tt4', { blockR: BLOCK_R, blockC: BLOCK_C }),
       target: () => cellsRange(allIndexes(BLOCK_R), allIndexes(BLOCK_C)),
     },
     {
-      text: 'Toca num lugar vazio e depois escolhe um passageiro aqui em baixo. Se repetires um passageiro sem querer, o lugar fica vermelho. Preenche tudo sem erros para venceres! Boa viagem 🚆',
+      text: () => I18N.t('tt5'),
       target: () => document.getElementById('pad'),
     },
   ],
@@ -1208,10 +1431,10 @@ const Tutorial = {
   show(i) {
     this.current = i;
     const step = this.steps[i];
-    this.label.textContent = `Passo ${i + 1} de ${this.steps.length}`;
+    this.label.textContent = I18N.t('tt_step_label', { i: i + 1, n: this.steps.length });
     this.text.textContent = typeof step.text === 'function' ? step.text() : step.text;
     this.renderDots();
-    document.getElementById('tt-next').textContent = (i === this.steps.length - 1) ? 'Começar a jogar!' : 'Seguinte';
+    document.getElementById('tt-next').textContent = (i === this.steps.length - 1) ? I18N.t('tt_start') : I18N.t('tt_next');
     this.positionFor(step.target());
   },
 
@@ -1294,6 +1517,11 @@ document.getElementById('btn-again').addEventListener('click', () => Controller.
 
 Profile.load();
 Game.vehicle = Profile.data.vehicle;
+
+I18N.current = Storage.get('passengerdoku_lang', 'pt');
+if (!I18N.dict[I18N.current]) I18N.current = 'pt';
+I18N.applyStatic();
+UI.renderLangSelector();
 
 document.addEventListener('keydown', (e) => {
   if (Controller.screens.game.classList.contains('active')) {
