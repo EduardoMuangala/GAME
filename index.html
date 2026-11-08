@@ -197,6 +197,7 @@
   }
   .vehicle-card .v-icon { font-size: 1.7rem; display: block; }
   .vehicle-card .v-name { font-size: .74rem; font-weight: 700; margin-top: 3px; }
+  .vehicle-card .v-size { display: block; font-size: .64rem; color: var(--text-soft); margin-top: 1px; }
   .vehicle-card .v-lock { font-size: .64rem; color: var(--text-soft); margin-top: 2px; }
   .vehicle-card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
   .vehicle-card.locked { opacity: .55; }
@@ -459,8 +460,8 @@
 
     <div class="howto">
       <b>Como jogar:</b> toca num lugar vazio, depois escolhe um passageiro no painel.
-      Cada passageiro só pode aparecer uma vez por linha, coluna e bloco 2×3.
-      Sem repetições = carruagem completa.
+      Cada passageiro só pode aparecer uma vez por linha, coluna e bloco.
+      Sem repetições = veículo completo. Veículos maiores têm grelhas maiores!
     </div>
   </main>
 
@@ -476,9 +477,7 @@
     <div id="board-wrap">
       <div class="vehicle-shell veh-train" id="vehicle-shell">
         <div class="vehicle-badge" id="vehicle-badge">🚆 Carruagem</div>
-        <div class="vehicle-windows">
-          <span></span><span></span><span></span><span></span><span></span><span></span>
-        </div>
+        <div class="vehicle-windows" id="vehicle-windows"></div>
         <div id="board"></div>
         <div class="vehicle-floor"></div>
       </div>
@@ -498,8 +497,8 @@
   <!-- ===== Ecrã de vitória ===== -->
   <main class="screen" id="screen-win">
     <div class="win-card">
-      <div class="emoji">🚆🎉</div>
-      <h2>Carruagem completa!</h2>
+      <div class="emoji" id="win-emoji">🚆🎉</div>
+      <h2 id="win-title">Completo!</h2>
       <div class="stars-row" id="win-stars">
         <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
       </div>
@@ -596,20 +595,24 @@ const Profile = {
 // diferentes a cada nível, desbloqueado por estrelas acumuladas — prepara a expansão
 // futura do tema "passageiro" para outros meios de transporte.
 const VEHICLES = [
-  { id: 'train', icon: '🚆', name: 'Carruagem', badge: '🚆 Carruagem 12', unlockStars: 0 },
-  { id: 'plane', icon: '✈️', name: 'Avião', badge: '✈️ Voo PD-204', unlockStars: 15 },
-  { id: 'ship', icon: '🚢', name: 'Navio', badge: '🚢 Convés Principal', unlockStars: 30 },
+  { id: 'train', icon: '🚆', name: 'Carruagem', badge: '🚆 Carruagem 12', winText: 'Carruagem completa!', unlockStars: 0, size: 4, blockR: 2, blockC: 2 },
+  { id: 'plane', icon: '✈️', name: 'Avião', badge: '✈️ Voo PD-204', winText: 'Avião completo!', unlockStars: 15, size: 6, blockR: 2, blockC: 3 },
+  { id: 'ship', icon: '🚢', name: 'Navio', badge: '🚢 Convés Principal', winText: 'Navio completo!', unlockStars: 30, size: 8, blockR: 2, blockC: 4 },
 ];
 
 function vehicleById(id) {
   return VEHICLES.find(v => v.id === id) || VEHICLES[0];
 }
 
-const SIZE = 6;
-const BLOCK_R = 2, BLOCK_C = 3;
+// Tamanho da grelha ATUAL — muda a cada newPuzzle() consoante o veículo escolhido
+// (Carruagem 4x4, Avião 6x6, Navio 8x8). Mantido como variável global porque é lido
+// por quase todas as funções de lógica/renderização abaixo.
+let SIZE = 6;
+let BLOCK_R = 2, BLOCK_C = 3;
 
-// 6 passageiros distinguíveis por COR + FORMA + NÚMERO (redundância para acessibilidade,
+// Até 8 passageiros distinguíveis por COR + FORMA + NÚMERO (redundância para acessibilidade,
 // nunca dependente só da cor — corrige a falha de clareza visual do jogo original).
+// Só os primeiros N (consoante o tamanho da grelha) são usados em cada puzzle.
 const PASSENGERS = [
   { color: '#F28C28', bag: '#FFD9A0' }, // 1 laranja
   { color: '#4C8BF5', bag: '#C9DCFB' }, // 2 azul
@@ -617,7 +620,17 @@ const PASSENGERS = [
   { color: '#C65BCF', bag: '#EFD2F3' }, // 4 roxo
   { color: '#E0B400', bag: '#F8E8A8' }, // 5 amarelo escuro (contraste suficiente)
   { color: '#6B5E4F', bag: '#D8CFC2' }, // 6 castanho
+  { color: '#5B4B8A', bag: '#D9D0ED' }, // 7 roxo-azulado escuro
+  { color: '#1F8A70', bag: '#C8ECE2' }, // 8 verde escuro
 ];
+
+function cellPxFor(size) {
+  return { 4: 74, 6: 56, 8: 42 }[size] || 48;
+}
+
+function padPxFor(size) {
+  return { 4: 58, 6: 50, 8: 38 }[size] || 44;
+}
 
 function passengerSVG(idx, size = 40) {
   const p = PASSENGERS[idx - 1];
@@ -669,8 +682,13 @@ const Game = {
   },
 
   newPuzzle() {
+    const veh = vehicleById(this.vehicle);
+    SIZE = veh.size;
+    BLOCK_R = veh.blockR;
+    BLOCK_C = veh.blockC;
+
     const base = this.makeSolutionBase();
-    const symbolMap = this.shuffle([0, 1, 2, 3, 4, 5]);
+    const symbolMap = this.shuffle(Array.from({ length: SIZE }, (_, i) => i));
     this.solution = base.map(row => row.map(v => symbolMap[v] + 1));
     this.puzzle = this.solution.map(row => row.slice());
     this.given = this.solution.map(row => row.map(() => true));
@@ -746,11 +764,15 @@ const Game = {
   },
 
   // 1 a 3 estrelas: cruza tempo e erros cometidos (não só velocidade — pune repetição de conflitos).
+  // O limite de tempo escala com o tamanho da grelha do veículo atual (6x6 = referência),
+  // para um Navio 8x8 não ser penalizado só por ter naturalmente mais células a preencher.
   starsForResult() {
     const thresholds = {
       facil: [60, 2], medio: [120, 3], dificil: [180, 5],
     }[this.difficulty];
-    const [timeLimit, errorLimit] = thresholds;
+    const sizeFactor = (SIZE * SIZE) / 36;
+    const timeLimit = thresholds[0] * sizeFactor;
+    const errorLimit = thresholds[1];
     const t = this.elapsedSeconds();
     if (t <= timeLimit && this.errorsCount <= 1) return 3;
     if (t <= timeLimit * 1.8 && this.errorsCount <= errorLimit) return 2;
@@ -770,8 +792,9 @@ const UI = {
   toastEl: document.getElementById('toast'),
 
   renderBoard() {
-    this.boardEl.style.gridTemplateColumns = `repeat(${SIZE}, 56px)`;
-    this.boardEl.style.gridTemplateRows = `repeat(${SIZE}, 56px)`;
+    const cellPx = cellPxFor(SIZE);
+    this.boardEl.style.gridTemplateColumns = `repeat(${SIZE}, ${cellPx}px)`;
+    this.boardEl.style.gridTemplateRows = `repeat(${SIZE}, ${cellPx}px)`;
     this.boardEl.innerHTML = '';
     for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
@@ -797,11 +820,14 @@ const UI = {
   },
 
   renderPad() {
-    this.padEl.style.gridTemplateColumns = `repeat(${SIZE}, 50px)`;
+    const padPx = padPxFor(SIZE);
+    this.padEl.style.gridTemplateColumns = `repeat(${SIZE}, ${padPx}px)`;
     this.padEl.innerHTML = '';
     for (let v = 1; v <= SIZE; v++) {
       const btn = document.createElement('button');
-      btn.innerHTML = passengerSVG(v, 30);
+      btn.style.width = padPx + 'px';
+      btn.style.height = padPx + 'px';
+      btn.innerHTML = passengerSVG(v, Math.round(padPx * 0.6));
       btn.addEventListener('click', () => Controller.onPadPress(v));
       this.padEl.appendChild(btn);
     }
@@ -860,6 +886,7 @@ const UI = {
       card.innerHTML = `
         <span class="v-icon">${unlocked ? v.icon : '🔒'}</span>
         <span class="v-name">${v.name}</span>
+        <span class="v-size">${v.size}×${v.size}</span>
         ${unlocked ? '' : `<span class="v-lock">⭐ ${v.unlockStars}</span>`}
       `;
       card.addEventListener('click', () => Controller.onVehiclePick(v, unlocked));
@@ -871,7 +898,11 @@ const UI = {
     const v = vehicleById(Game.vehicle);
     const shell = document.getElementById('vehicle-shell');
     shell.className = 'vehicle-shell veh-' + v.id;
-    document.getElementById('vehicle-badge').textContent = v.badge;
+    document.getElementById('vehicle-badge').textContent = `${v.badge} · ${v.size}×${v.size}`;
+
+    const windows = document.getElementById('vehicle-windows');
+    windows.innerHTML = '';
+    for (let i = 0; i < v.size; i++) windows.appendChild(document.createElement('span'));
   },
 
   renderStars(n) {
@@ -1028,6 +1059,9 @@ const Controller = {
     const finalScore = Game.computeScore();
     const stars = Game.starsForResult();
 
+    const veh = vehicleById(Game.vehicle);
+    document.getElementById('win-title').textContent = veh.winText;
+    document.getElementById('win-emoji').textContent = veh.icon + '🎉';
     document.getElementById('win-time').textContent = finalTime;
     document.getElementById('win-moves').textContent = Game.moves;
     document.getElementById('win-score').textContent = finalScore;
@@ -1113,20 +1147,20 @@ const Tutorial = {
 
   steps: [
     {
-      text: 'Bem-vindo a bordo! Esta é a tua carruagem 6×6. O objetivo é preenchê-la toda com passageiros — sem deixar nenhum lugar vazio.',
+      text: () => `Bem-vindo a bordo! Este é o teu veículo ${SIZE}×${SIZE}. O objetivo é preenchê-lo todo com passageiros — sem deixar nenhum lugar vazio.`,
       target: () => document.getElementById('board'),
     },
     {
       text: 'Regra 1: cada passageiro só pode aparecer uma vez em cada LINHA. Repara nesta linha de destaque.',
-      target: () => cellsRange(0, [0, 1, 2, 3, 4, 5]),
+      target: () => cellsRange(0, allIndexes(SIZE)),
     },
     {
       text: 'Regra 2: o mesmo vale para cada COLUNA — nunca repitas o mesmo passageiro na mesma coluna.',
-      target: () => cellsRange([0, 1, 2, 3, 4, 5], 0),
+      target: () => cellsRange(allIndexes(SIZE), 0),
     },
     {
-      text: 'Regra 3: e também dentro de cada BLOCO 2×3 (separado por linhas mais grossas na carruagem).',
-      target: () => cellsRange([0, 1], [0, 1, 2]),
+      text: () => `Regra 3: e também dentro de cada BLOCO ${BLOCK_R}×${BLOCK_C} (separado por linhas mais grossas no veículo).`,
+      target: () => cellsRange(allIndexes(BLOCK_R), allIndexes(BLOCK_C)),
     },
     {
       text: 'Toca num lugar vazio e depois escolhe um passageiro aqui em baixo. Se repetires um passageiro sem querer, o lugar fica vermelho. Preenche tudo sem erros para venceres! Boa viagem 🚆',
@@ -1175,7 +1209,7 @@ const Tutorial = {
     this.current = i;
     const step = this.steps[i];
     this.label.textContent = `Passo ${i + 1} de ${this.steps.length}`;
-    this.text.textContent = step.text;
+    this.text.textContent = typeof step.text === 'function' ? step.text() : step.text;
     this.renderDots();
     document.getElementById('tt-next').textContent = (i === this.steps.length - 1) ? 'Começar a jogar!' : 'Seguinte';
     this.positionFor(step.target());
@@ -1229,6 +1263,10 @@ function cellsRange(rowSel, colSel) {
     out.push(UI.boardEl.children[r * SIZE + c]);
   }));
   return out;
+}
+
+function allIndexes(n) {
+  return Array.from({ length: n }, (_, i) => i);
 }
 
 document.getElementById('tt-next').addEventListener('click', () => Tutorial.next());
