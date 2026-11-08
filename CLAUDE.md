@@ -1,8 +1,8 @@
-# GAME — Protótipo "Ratodoku" (mecânica principal do Meowdoku)
+# GAME — Protótipo "PassengerDoku" (mecânica principal do Meowdoku)
 
 > Contexto: teste cronometrado (4h) de "Vibe Coder" para a Infinity Games.
 > Jogo de referência escolhido: **Meowdoku** (puzzle lógico tipo Sudoku, atualmente Top 1 nos EUA, Google Play).
-> Tema adaptado para este protótipo: **rato** 🐭 em vez de gato (personagem principal / peça do jogo).
+> Tema adaptado para este protótipo: **passageiro de transportes públicos** 🚆 (em vez de rato/gato).
 
 ---
 
@@ -15,31 +15,37 @@
 
 Jogo de lógica tipo Sudoku simplificado:
 
-- Grelha **6×6**, dividida em blocos **2×3**.
-- 6 símbolos distintos (aqui: variações/poses do rato 🐭).
+- Grelha **6×6** ("carruagem"), dividida em blocos **2×3**.
+- 6 símbolos distintos (aqui: passageiros em 6 cores).
 - Regras:
-  - cada símbolo aparece **uma única vez** por linha;
+  - cada passageiro aparece **uma única vez** por linha;
   - uma única vez por coluna;
   - uma única vez por bloco 2×3.
-- O jogador toca numa célula vazia, escolhe um símbolo num painel, e o jogo valida em tempo real (destaca conflitos).
-- Vitória quando a grelha está completa e sem conflitos.
-- Elementos de retenção replicados: temporizador visível, animação/ecrã de vitória, botão "Novo puzzle" (jogabilidade infinita / replay imediato).
+- O jogador toca num lugar vazio, escolhe um passageiro num painel, e o jogo valida em tempo real (destaca conflitos).
+- Vitória quando a carruagem está completa e sem conflitos.
+- Elementos de retenção: temporizador, combo, estrelas, cards de conquista, ecrã de vitória com confetti, "Novo puzzle" (jogabilidade infinita / replay imediato).
 
-### Decisão de tema
-- Personagem/peça central: **rato** (🐭) em vez de gato, com variações visuais simples (expressões/poses) para distinguir os 6 símbolos — mantém a mecânica idêntica ao Meowdoku, mudando só a skin.
+### Decisão de tema e posicionamento de negócio (pivot de 2ª sessão)
+- **Personagem/peça central: passageiro de comboio/metro/autocarro** (🚆), em vez de rato/gato.
+- **Porquê este pivot:** Portugal tem um público alargado e recorrente de utilizadores de transportes públicos (comboio, metro, autocarro). Um tema "passageiro" não é só estético — define um **público-alvo concreto e um canal de distribuição físico a pensar a longo prazo**: se o jogo vier a ser publicado, há um encaixe natural para parcerias ou publicidade dentro de comboios, metros e autocarros (ecrãs, QR codes, cartazes), ligando o tema do jogo ao local onde o jogador real o experimenta.
+- Mantém a mecânica idêntica ao Meowdoku — muda-se a skin e a narrativa de marca, não a lógica.
+- Os 6 símbolos continuam distinguíveis por **cor + forma + número** (nunca só cor), preservando o cuidado de acessibilidade já decidido na sessão anterior.
 
 ## 3. Âmbito do protótipo (o que entra e o que não entra)
 
-**Entra (fiel ao essencial da mecânica):**
-- Grelha 6×6 com blocos 2×3, geração de puzzle válido, validação em tempo real, deteção de vitória, temporizador, "novo puzzle".
+**Entra (fiel ao essencial da mecânica, + camada de gamificação):**
+- Grelha 6×6 com blocos 2×3, geração de puzzle válido, validação em tempo real, deteção de vitória, temporizador, dificuldade (fácil/médio/difícil), "novo puzzle".
+- Gamificação: combo em tempo real, pontuação com bónus/penalização, 1-3 estrelas por resultado, cards de conquista, perfil persistente (estrelas totais, jogos jogados).
+- UX: splash inicial animado, tutorial interativo de 5 passos (com spotlight real sobre a UI), modais de confirmação para ações destrutivas (sair / recomeçar).
 
 **Não entra (fora do âmbito de 4h):**
-- Progressão de níveis/dificuldade, loja, anúncios, som, multiplayer, conta de utilizador, backend.
+- Progressão de níveis a longo prazo, loja, anúncios reais, som, multiplayer, conta de utilizador, backend.
 
 ## 4. Stack técnica
 
 - HTML + CSS + JS puro, um único ficheiro `index.html` (sem build, sem dependências).
-- Bibliotecas externas via CDN: GSAP (animações/transições de ecrã), canvas-confetti (celebração na vitória), Google Fonts "Fredoka".
+- Arquitetura em módulos dentro do mesmo ficheiro: `Storage`, `Profile`, `Game` (lógica pura), `UI` (renderização), `FX` (feedback visual), `Modal` (confirmações), `Tutorial`, `Controller` (fluxo).
+- Bibliotecas externas via CDN: GSAP (animações/transições de ecrã), canvas-confetti (celebração na vitória — servido via jsdelivr, não cdnjs: a versão do cdnjs falha com "module is not defined" em `<script>` simples), Google Fonts "Fredoka".
 - Deploy: **Vercel**, importado diretamente do repositório `EduardoMuangala/GAME`, branch `main` (deploy automático a cada push).
 - Link público: **https://game-alpha-one-18.vercel.app/**
 
@@ -47,17 +53,20 @@ Jogo de lógica tipo Sudoku simplificado:
 
 1. [x] Repositório `GAME` criado e clonado.
 2. [x] Escolha do jogo de referência (Meowdoku) e da mecânica principal.
-3. [x] Tema final confirmado (rato) e protótipo reescrito com design acessível (cor + forma + número, nunca só cor).
-4. [x] Protótipo revisto: grelha 6×6, blocos 2×3, dificuldade (fácil/médio/difícil), validação em tempo real, timer, pontuação, ecrã de vitória com confetti.
-5. [x] Commit + push para `main` (CLAUDE.md + index.html).
-6. [x] Deploy no Vercel e link público obtido.
-7. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
-8. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
-9. [ ] Escrever as 5 respostas curtas.
-10. [ ] Preparar registo de prompts completo (esta conversa).
-11. [ ] Enviar tudo para `hr@infinitygames.io`.
+3. [x] Protótipo construído com design acessível (cor + forma + número, nunca só cor).
+4. [x] Mecânica completa: grelha 6×6, blocos 2×3, dificuldade, validação em tempo real, timer, pontuação, vitória com confetti.
+5. [x] UX completa: splash inicial, tutorial interativo de 5 passos com spotlight real.
+6. [x] Gamificação: combo, estrelas, cards de conquista, perfil persistente, modais de confirmação.
+7. [x] Pivot de tema: rato → **passageiro de transportes públicos** (posicionamento de público/distribuição a longo prazo).
+8. [x] Deploy no Vercel e link público obtido; deploy automático a cada push.
+9. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
+10. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
+11. [ ] Escrever as 5 respostas curtas (mencionar o raciocínio de público-alvo via transportes públicos).
+12. [ ] Preparar registo de prompts completo (esta conversa).
+13. [ ] Enviar tudo para `hr@infinitygames.io`.
 
 ## 6. Notas para a próxima sessão/IA
 
 - Língua do projeto e commits: **português**.
 - Cada push para `main` dispara deploy automático no Vercel — não é preciso nenhum passo manual de deploy a partir daqui.
+- Chaves de `localStorage` usadas: `passengerdoku_profile` (estrelas totais, jogos jogados, melhor combo) e `passengerdoku_tutorial_seen` (evita repetir o tutorial). Chaves antigas (`ratodoku_*`) ficaram órfãs em navegadores que já tinham aberto a versão anterior — sem impacto, apenas dados obsoletos.

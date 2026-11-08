@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ratodoku — protótipo</title>
+<title>PassengerDoku — protótipo</title>
 
 <!-- Fonte: Fredoka (arredondada, lúdica, boa legibilidade) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -52,7 +52,7 @@
 
   /* ---------- Ecrã inicial ---------- */
   #screen-start { justify-content: center; text-align: center; gap: 18px; }
-  .logo-mouse { font-size: 4.2rem; line-height: 1; }
+  .logo-icon { font-size: 4.2rem; line-height: 1; }
   #screen-start h1 { font-size: 2.3rem; margin: 0; letter-spacing: .5px; }
   #screen-start p.tagline { margin: 0; color: var(--text-soft); max-width: 380px; font-size: 1.02rem; }
   .diff-row { display: flex; gap: 10px; margin-top: 6px; }
@@ -243,7 +243,7 @@
 
   /* ---------- Splash inicial ---------- */
   #screen-splash { justify-content: center; align-items: center; background: var(--board-frame); }
-  #screen-splash .splash-mouse { font-size: 5rem; }
+  #screen-splash .splash-icon { font-size: 5rem; }
   #screen-splash .splash-title { color: #fff; font-size: 1.6rem; margin-top: 6px; letter-spacing: 1px; }
   #splash-bar-track {
     width: 160px; height: 6px; border-radius: 999px;
@@ -367,17 +367,17 @@
 
   <!-- ===== Ecrã de splash ===== -->
   <main class="screen active" id="screen-splash">
-    <div class="splash-mouse">🐭</div>
-    <div class="splash-title">Ratodoku</div>
+    <div class="splash-icon">🚆</div>
+    <div class="splash-title">PassengerDoku</div>
     <div id="splash-bar-track"><div id="splash-bar-fill"></div></div>
   </main>
 
   <!-- ===== Ecrã inicial ===== -->
   <main class="screen" id="screen-start">
-    <div class="logo-mouse">🐭</div>
-    <h1>Ratodoku</h1>
+    <div class="logo-icon">🚆</div>
+    <h1>PassengerDoku</h1>
     <div class="pill" id="profile-pill" style="font-size:.85rem;">⭐ 0 · 🎮 0 jogos</div>
-    <p class="tagline">O quebra-cabeça lógico dos ratinhos. Preenche a grelha sem repetir nenhum na mesma linha, coluna ou bloco.</p>
+    <p class="tagline">O quebra-cabeça lógico dos passageiros. Preenche a carruagem sem repetir nenhum passageiro na mesma linha, coluna ou bloco.</p>
 
     <div class="diff-row">
       <button class="diff-btn selected" data-diff="facil">Fácil</button>
@@ -388,9 +388,9 @@
     <button class="btn-primary" id="btn-play">Jogar ▶</button>
 
     <div class="howto">
-      <b>Como jogar:</b> toca numa célula vazia, depois escolhe um ratinho no painel.
-      Cada ratinho só pode aparecer uma vez por linha, coluna e bloco 2×3.
-      Sem repetições = vitória.
+      <b>Como jogar:</b> toca num lugar vazio, depois escolhe um passageiro no painel.
+      Cada passageiro só pode aparecer uma vez por linha, coluna e bloco 2×3.
+      Sem repetições = carruagem completa.
     </div>
   </main>
 
@@ -420,8 +420,8 @@
   <!-- ===== Ecrã de vitória ===== -->
   <main class="screen" id="screen-win">
     <div class="win-card">
-      <div class="emoji">🐭🎉</div>
-      <h2>Resolvido!</h2>
+      <div class="emoji">🚆🎉</div>
+      <h2>Carruagem completa!</h2>
       <div class="stars-row" id="win-stars">
         <span class="star">⭐</span><span class="star">⭐</span><span class="star">⭐</span>
       </div>
@@ -469,8 +469,8 @@
 
 <script>
 /* =========================================================================
-   Ratodoku — mecânica central do Meowdoku (Sudoku 6x6, blocos 2x3),
-   tema ratinhos. Arquitetura em módulos:
+   PassengerDoku — mecânica central do Meowdoku (Sudoku 6x6, blocos 2x3),
+   tema passageiros de transportes públicos. Arquitetura em módulos:
    0) Storage    — leitura/escrita persistente (localStorage), tolerante a falhas
    1) Game       — estado e lógica pura do puzzle (gera, valida, pontua)
    2) UI         — renderização do tabuleiro/painel/HUD a partir do estado
@@ -495,7 +495,7 @@ const Storage = {
 };
 
 const Profile = {
-  key: 'ratodoku_profile',
+  key: 'passengerdoku_profile',
   data: null,
 
   load() {
@@ -515,29 +515,24 @@ const Profile = {
 const SIZE = 6;
 const BLOCK_R = 2, BLOCK_C = 3;
 
-// 6 ratinhos distinguíveis por COR + FORMA + NÚMERO (redundância para acessibilidade,
+// 6 passageiros distinguíveis por COR + FORMA + NÚMERO (redundância para acessibilidade,
 // nunca dependente só da cor — corrige a falha de clareza visual do jogo original).
-const MICE = [
-  { color: '#F28C28', ear: '#FFD9A0' }, // 1 laranja
-  { color: '#4C8BF5', ear: '#C9DCFB' }, // 2 azul
-  { color: '#3FA796', ear: '#CDEFE8' }, // 3 verde-água
-  { color: '#C65BCF', ear: '#EFD2F3' }, // 4 roxo
-  { color: '#E0B400', ear: '#F8E8A8' }, // 5 amarelo escuro (contraste suficiente)
-  { color: '#6B5E4F', ear: '#D8CFC2' }, // 6 castanho
+const PASSENGERS = [
+  { color: '#F28C28', bag: '#FFD9A0' }, // 1 laranja
+  { color: '#4C8BF5', bag: '#C9DCFB' }, // 2 azul
+  { color: '#3FA796', bag: '#CDEFE8' }, // 3 verde-água
+  { color: '#C65BCF', bag: '#EFD2F3' }, // 4 roxo
+  { color: '#E0B400', bag: '#F8E8A8' }, // 5 amarelo escuro (contraste suficiente)
+  { color: '#6B5E4F', bag: '#D8CFC2' }, // 6 castanho
 ];
 
-function mouseSVG(idx, size = 40) {
-  const m = MICE[idx - 1];
+function passengerSVG(idx, size = 40) {
+  const p = PASSENGERS[idx - 1];
   return `
-  <svg class="piece-icon" viewBox="0 0 48 48" width="${size}" height="${size}" aria-label="ratinho ${idx}">
-    <ellipse cx="24" cy="28" rx="15" ry="13" fill="${m.color}"/>
-    <circle cx="12" cy="14" r="7" fill="${m.color}"/>
-    <circle cx="36" cy="14" r="7" fill="${m.color}"/>
-    <circle cx="12" cy="14" r="3.5" fill="${m.ear}"/>
-    <circle cx="36" cy="14" r="3.5" fill="${m.ear}"/>
-    <circle cx="19" cy="26" r="2.1" fill="#1b1410"/>
-    <circle cx="29" cy="26" r="2.1" fill="#1b1410"/>
-    <ellipse cx="24" cy="31" rx="2.6" ry="1.8" fill="#1b1410"/>
+  <svg class="piece-icon" viewBox="0 0 48 48" width="${size}" height="${size}" aria-label="passageiro ${idx}">
+    <path d="M9,44 C9,28 16,22 24,22 C32,22 39,28 39,44 Z" fill="${p.color}"/>
+    <circle cx="24" cy="12" r="9" fill="${p.color}"/>
+    <path d="M9,44 C9,33 13,27 18,24 L18,44 Z" fill="${p.bag}" opacity=".55"/>
     <text x="24" y="43" text-anchor="middle" font-size="9" font-weight="700" fill="#1b1410" font-family="Fredoka, sans-serif">${idx}</text>
   </svg>`;
 }
@@ -695,7 +690,7 @@ const UI = {
 
         const val = Game.puzzle[r][c];
         if (val !== 0) {
-          div.innerHTML = mouseSVG(val);
+          div.innerHTML = passengerSVG(val);
           if (!Game.given[r][c] && Game.hasConflict(r, c, val)) {
             div.classList.add('error');
             div.insertAdjacentHTML('beforeend', '<span class="error-badge">!</span>');
@@ -712,7 +707,7 @@ const UI = {
     this.padEl.innerHTML = '';
     for (let v = 1; v <= SIZE; v++) {
       const btn = document.createElement('button');
-      btn.innerHTML = mouseSVG(v, 30);
+      btn.innerHTML = passengerSVG(v, 30);
       btn.addEventListener('click', () => Controller.onPadPress(v));
       this.padEl.appendChild(btn);
     }
@@ -855,7 +850,7 @@ const Controller = {
     }, 500);
 
     let seen = false;
-    try { seen = localStorage.getItem('ratodoku_tutorial_seen') === '1'; } catch (e) {}
+    try { seen = localStorage.getItem('passengerdoku_tutorial_seen') === '1'; } catch (e) {}
     if (!seen) {
       clearInterval(Game.timerInterval);
       Game.startTime = Date.now();
@@ -871,7 +866,7 @@ const Controller = {
 
   onPadPress(val) {
     if (!Game.selected) {
-      UI.flashToast('Seleciona primeiro uma célula vazia 🐭');
+      UI.flashToast('Seleciona primeiro um lugar vazio 🚆');
       return;
     }
     const [r, c] = Game.selected;
@@ -975,23 +970,23 @@ const Tutorial = {
 
   steps: [
     {
-      text: 'Bem-vindo! Este é o teu tabuleiro 6×6. O objetivo é preenchê-lo todo com ratinhos — sem deixar nenhuma célula vazia.',
+      text: 'Bem-vindo a bordo! Esta é a tua carruagem 6×6. O objetivo é preenchê-la toda com passageiros — sem deixar nenhum lugar vazio.',
       target: () => document.getElementById('board'),
     },
     {
-      text: 'Regra 1: cada ratinho só pode aparecer uma vez em cada LINHA. Repara nesta linha de destaque.',
+      text: 'Regra 1: cada passageiro só pode aparecer uma vez em cada LINHA. Repara nesta linha de destaque.',
       target: () => cellsRange(0, [0, 1, 2, 3, 4, 5]),
     },
     {
-      text: 'Regra 2: o mesmo vale para cada COLUNA — nunca repitas o mesmo ratinho na mesma coluna.',
+      text: 'Regra 2: o mesmo vale para cada COLUNA — nunca repitas o mesmo passageiro na mesma coluna.',
       target: () => cellsRange([0, 1, 2, 3, 4, 5], 0),
     },
     {
-      text: 'Regra 3: e também dentro de cada BLOCO 2×3 (separado por linhas mais grossas no tabuleiro).',
+      text: 'Regra 3: e também dentro de cada BLOCO 2×3 (separado por linhas mais grossas na carruagem).',
       target: () => cellsRange([0, 1], [0, 1, 2]),
     },
     {
-      text: 'Toca numa célula vazia e depois escolhe um ratinho aqui em baixo. Se repetires um ratinho sem querer, a célula fica vermelha. Preenche tudo sem erros para venceres! Boa sorte 🐭',
+      text: 'Toca num lugar vazio e depois escolhe um passageiro aqui em baixo. Se repetires um passageiro sem querer, o lugar fica vermelho. Preenche tudo sem erros para venceres! Boa viagem 🚆',
       target: () => document.getElementById('pad'),
     },
   ],
@@ -1062,7 +1057,7 @@ const Tutorial = {
     this.overlay.classList.add('hidden');
     UI.boardEl.classList.remove('tutorial-lock');
     UI.padEl.classList.remove('tutorial-lock');
-    try { localStorage.setItem('ratodoku_tutorial_seen', '1'); } catch (e) {}
+    try { localStorage.setItem('passengerdoku_tutorial_seen', '1'); } catch (e) {}
 
     if (!Game.timerInterval) {
       Game.startTime = Date.now();
