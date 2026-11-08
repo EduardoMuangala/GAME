@@ -240,12 +240,67 @@
   @media (max-width: 420px) {
     .howto { font-size: .82rem; }
   }
+
+  /* ---------- Splash inicial ---------- */
+  #screen-splash { justify-content: center; align-items: center; background: var(--board-frame); }
+  #screen-splash .splash-mouse { font-size: 5rem; }
+  #screen-splash .splash-title { color: #fff; font-size: 1.6rem; margin-top: 6px; letter-spacing: 1px; }
+  #splash-bar-track {
+    width: 160px; height: 6px; border-radius: 999px;
+    background: rgba(255,255,255,.25); margin-top: 20px; overflow: hidden;
+  }
+  #splash-bar-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  /* ---------- Tutorial (overlay sobre o jogo) ---------- */
+  #tutorial-spotlight {
+    position: fixed;
+    border-radius: 14px;
+    box-shadow: 0 0 0 9999px rgba(20, 14, 9, .72);
+    pointer-events: none;
+    z-index: 500;
+    transition: all .35s ease;
+  }
+  #tutorial-tooltip {
+    position: fixed;
+    z-index: 501;
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 18px;
+    max-width: 280px;
+    box-shadow: 0 14px 30px rgba(0,0,0,.35);
+    transition: all .35s ease;
+  }
+  #tutorial-tooltip .tt-step-label {
+    font-size: .72rem; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px;
+  }
+  #tutorial-tooltip p { margin: 0 0 12px; font-size: .92rem; line-height: 1.35; color: var(--text); }
+  .tt-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tt-dots { display: flex; gap: 5px; }
+  .tt-dots span { width: 6px; height: 6px; border-radius: 50%; background: #e0d6c7; }
+  .tt-dots span.on { background: var(--accent); }
+  .tt-actions { display: flex; gap: 6px; }
+  .tt-actions button {
+    border: none; border-radius: 8px; padding: 7px 14px;
+    font-family: inherit; font-weight: 600; font-size: .82rem; cursor: pointer;
+  }
+  #tt-skip { background: transparent; color: var(--text-soft); }
+  #tt-next { background: var(--board-frame); color: #fff; }
+  #tutorial-overlay.hidden { display: none; }
+  #board.tutorial-lock .cell, #pad.tutorial-lock button { pointer-events: none; }
 </style>
 </head>
 <body>
 
+  <!-- ===== Ecrã de splash ===== -->
+  <main class="screen active" id="screen-splash">
+    <div class="splash-mouse">🐭</div>
+    <div class="splash-title">Ratodoku</div>
+    <div id="splash-bar-track"><div id="splash-bar-fill"></div></div>
+  </main>
+
   <!-- ===== Ecrã inicial ===== -->
-  <main class="screen active" id="screen-start">
+  <main class="screen" id="screen-start">
     <div class="logo-mouse">🐭</div>
     <h1>Ratodoku</h1>
     <p class="tagline">O quebra-cabeça lógico dos ratinhos. Preenche a grelha sem repetir nenhum na mesma linha, coluna ou bloco.</p>
@@ -300,6 +355,22 @@
       <button class="btn-primary" id="btn-again">Jogar outra vez</button>
     </div>
   </main>
+
+  <!-- ===== Overlay do tutorial (5 passos) ===== -->
+  <div id="tutorial-overlay" class="hidden">
+    <div id="tutorial-spotlight"></div>
+    <div id="tutorial-tooltip">
+      <div class="tt-step-label" id="tt-label">Passo 1 de 5</div>
+      <p id="tt-text"></p>
+      <div class="tt-footer">
+        <div class="tt-dots" id="tt-dots"></div>
+        <div class="tt-actions">
+          <button id="tt-skip">Saltar</button>
+          <button id="tt-next">Seguinte</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <script>
 /* =========================================================================
@@ -529,6 +600,7 @@ const UI = {
 
 const Controller = {
   screens: {
+    splash: document.getElementById('screen-splash'),
     start: document.getElementById('screen-start'),
     game: document.getElementById('screen-game'),
     win: document.getElementById('screen-win'),
@@ -553,6 +625,14 @@ const Controller = {
       UI.updateTimer();
       UI.updateScore();
     }, 500);
+
+    let seen = false;
+    try { seen = localStorage.getItem('ratodoku_tutorial_seen') === '1'; } catch (e) {}
+    if (!seen) {
+      clearInterval(Game.timerInterval);
+      Game.startTime = Date.now();
+      setTimeout(() => Tutorial.start(), 400);
+    }
   },
 
   onCellClick(r, c) {
@@ -596,6 +676,134 @@ const Controller = {
   },
 };
 
+/* ---------- Tutorial interativo (5 passos, com spotlight real sobre o tabuleiro) ---------- */
+
+const Tutorial = {
+  overlay: document.getElementById('tutorial-overlay'),
+  spotlight: document.getElementById('tutorial-spotlight'),
+  tooltip: document.getElementById('tutorial-tooltip'),
+  label: document.getElementById('tt-label'),
+  text: document.getElementById('tt-text'),
+  dotsEl: document.getElementById('tt-dots'),
+  current: 0,
+
+  steps: [
+    {
+      text: 'Bem-vindo! Este é o teu tabuleiro 6×6. O objetivo é preenchê-lo todo com ratinhos — sem deixar nenhuma célula vazia.',
+      target: () => document.getElementById('board'),
+    },
+    {
+      text: 'Regra 1: cada ratinho só pode aparecer uma vez em cada LINHA. Repara nesta linha de destaque.',
+      target: () => cellsRange(0, [0, 1, 2, 3, 4, 5]),
+    },
+    {
+      text: 'Regra 2: o mesmo vale para cada COLUNA — nunca repitas o mesmo ratinho na mesma coluna.',
+      target: () => cellsRange([0, 1, 2, 3, 4, 5], 0),
+    },
+    {
+      text: 'Regra 3: e também dentro de cada BLOCO 2×3 (separado por linhas mais grossas no tabuleiro).',
+      target: () => cellsRange([0, 1], [0, 1, 2]),
+    },
+    {
+      text: 'Toca numa célula vazia e depois escolhe um ratinho aqui em baixo. Se repetires um ratinho sem querer, a célula fica vermelha. Preenche tudo sem erros para venceres! Boa sorte 🐭',
+      target: () => document.getElementById('pad'),
+    },
+  ],
+
+  renderDots() {
+    this.dotsEl.innerHTML = '';
+    this.steps.forEach((_, i) => {
+      const dot = document.createElement('span');
+      if (i === this.current) dot.classList.add('on');
+      this.dotsEl.appendChild(dot);
+    });
+  },
+
+  positionFor(target) {
+    let rect;
+    if (Array.isArray(target)) {
+      const rects = target.map(el => el.getBoundingClientRect());
+      const left = Math.min(...rects.map(r => r.left));
+      const top = Math.min(...rects.map(r => r.top));
+      const right = Math.max(...rects.map(r => r.right));
+      const bottom = Math.max(...rects.map(r => r.bottom));
+      rect = { left, top, right, bottom, width: right - left, height: bottom - top };
+    } else {
+      rect = target.getBoundingClientRect();
+    }
+    const pad = 6;
+    this.spotlight.style.left = `${rect.left - pad}px`;
+    this.spotlight.style.top = `${rect.top - pad}px`;
+    this.spotlight.style.width = `${rect.width + pad * 2}px`;
+    this.spotlight.style.height = `${rect.height + pad * 2}px`;
+
+    // tooltip: abaixo do alvo se houver espaço, senão acima
+    const vh = window.innerHeight, vw = window.innerWidth;
+    const ttH = 150, ttW = 280;
+    let top = rect.bottom + 16;
+    if (top + ttH > vh) top = Math.max(10, rect.top - ttH - 16);
+    let left = Math.min(Math.max(10, rect.left), vw - ttW - 10);
+    this.tooltip.style.top = `${top}px`;
+    this.tooltip.style.left = `${left}px`;
+  },
+
+  show(i) {
+    this.current = i;
+    const step = this.steps[i];
+    this.label.textContent = `Passo ${i + 1} de ${this.steps.length}`;
+    this.text.textContent = step.text;
+    this.renderDots();
+    document.getElementById('tt-next').textContent = (i === this.steps.length - 1) ? 'Começar a jogar!' : 'Seguinte';
+    this.positionFor(step.target());
+  },
+
+  start() {
+    UI.boardEl.classList.add('tutorial-lock');
+    UI.padEl.classList.add('tutorial-lock');
+    this.overlay.classList.remove('hidden');
+    this.show(0);
+  },
+
+  next() {
+    if (this.current < this.steps.length - 1) {
+      this.show(this.current + 1);
+    } else {
+      this.finish();
+    }
+  },
+
+  finish() {
+    this.overlay.classList.add('hidden');
+    UI.boardEl.classList.remove('tutorial-lock');
+    UI.padEl.classList.remove('tutorial-lock');
+    try { localStorage.setItem('ratodoku_tutorial_seen', '1'); } catch (e) {}
+
+    if (!Game.timerInterval) {
+      Game.startTime = Date.now();
+      Game.timerInterval = setInterval(() => {
+        UI.updateTimer();
+        UI.updateScore();
+      }, 500);
+    }
+  },
+};
+
+function cellsRange(rowSel, colSel) {
+  const rows = Array.isArray(rowSel) ? rowSel : [rowSel];
+  const cols = Array.isArray(colSel) ? colSel : [colSel];
+  const out = [];
+  rows.forEach(r => cols.forEach(c => {
+    out.push(UI.boardEl.children[r * SIZE + c]);
+  }));
+  return out;
+}
+
+document.getElementById('tt-next').addEventListener('click', () => Tutorial.next());
+document.getElementById('tt-skip').addEventListener('click', () => Tutorial.finish());
+window.addEventListener('resize', () => {
+  if (!Tutorial.overlay.classList.contains('hidden')) Tutorial.positionFor(Tutorial.steps[Tutorial.current].target());
+});
+
 /* ---------- Eventos de UI ---------- */
 
 document.querySelectorAll('.diff-btn').forEach(btn => {
@@ -621,6 +829,17 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Backspace' || e.key === 'Delete') Controller.eraseSelected();
   }
 });
+
+/* ---------- Splash inicial: animação de abertura antes do menu ---------- */
+(function runSplash() {
+  const tl = gsap.timeline({
+    onComplete: () => Controller.goTo('start'),
+  });
+  tl.from('#screen-splash .splash-mouse', { scale: 0, rotate: -25, duration: .55, ease: 'back.out(2.2)' })
+    .from('#screen-splash .splash-title', { opacity: 0, y: 10, duration: .35 }, '-=.15')
+    .to('#splash-bar-fill', { width: '100%', duration: .85, ease: 'power1.inOut' })
+    .to('#screen-splash', { opacity: 0, duration: .35, delay: .1 });
+})();
 </script>
 </body>
 </html>
