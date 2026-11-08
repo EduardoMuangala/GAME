@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ratodoku — protótipo</title>
+
+<!-- Fonte: Fredoka (arredondada, lúdica, boa legibilidade) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- GSAP: transições de ecrã e micro-animações -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<!-- canvas-confetti: celebração na vitória -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js"></script>
+
+<style>
+  :root {
+    /* paleta — cada cor com um único significado, nunca partilhada */
+    --bg: #F4EFE7;            /* fundo neutro, baixa saturação */
+    --board-frame: #2B2118;   /* moldura do tabuleiro, alto contraste */
+    --cell-empty: #FFFFFF;
+    --cell-fixed: #F0E4D1;    /* célula "dada", tom quente distinto, nunca branco puro */
+    --accent: #FF7A33;        /* ÚNICO uso: seleção ativa */
+    --error-bg: #FFD4D4;      /* ÚNICO uso: conflito */
+    --error-ic: #C62828;
+    --success: #3FA796;
+    --text: #2B2118;
+    --text-soft: #6B5E4F;
+    --shadow: rgba(43,33,24,.18);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100vh;
+    background: var(--bg);
+    font-family: "Fredoka", "Trebuchet MS", sans-serif;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  .screen {
+    min-height: 100vh;
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 60px;
+  }
+  .screen.active { display: flex; }
+
+  /* ---------- Ecrã inicial ---------- */
+  #screen-start { justify-content: center; text-align: center; gap: 18px; }
+  .logo-mouse { font-size: 4.2rem; line-height: 1; }
+  #screen-start h1 { font-size: 2.3rem; margin: 0; letter-spacing: .5px; }
+  #screen-start p.tagline { margin: 0; color: var(--text-soft); max-width: 380px; font-size: 1.02rem; }
+  .diff-row { display: flex; gap: 10px; margin-top: 6px; }
+  .diff-btn {
+    border: 2px solid var(--board-frame);
+    background: #fff;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: .92rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+    transition: transform .15s ease;
+  }
+  .diff-btn.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .diff-btn:hover { transform: translateY(-2px); }
+
+  .btn-primary {
+    margin-top: 10px;
+    background: var(--board-frame);
+    color: #fff;
+    border: none;
+    padding: 14px 38px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 14px;
+    cursor: pointer;
+    box-shadow: 0 8px 0 0 rgba(0,0,0,.12);
+  }
+  .btn-primary:active { transform: translateY(4px); box-shadow: 0 4px 0 0 rgba(0,0,0,.12); }
+
+  .howto {
+    margin-top: 18px;
+    background: #fff;
+    border-radius: 14px;
+    padding: 14px 18px;
+    max-width: 360px;
+    font-size: .88rem;
+    color: var(--text-soft);
+    box-shadow: 0 4px 14px var(--shadow);
+    text-align: left;
+  }
+  .howto b { color: var(--text); }
+
+  /* ---------- Ecrã de jogo ---------- */
+  #screen-game { gap: 4px; }
+
+  .topbar {
+    width: 100%;
+    max-width: 420px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .topbar .pill {
+    background: #fff;
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: .95rem;
+    box-shadow: 0 3px 10px var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 70px;
+    justify-content: center;
+  }
+  .topbar .icon-btn {
+    background: #fff;
+    border: none;
+    border-radius: 12px;
+    width: 42px; height: 42px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    box-shadow: 0 3px 10px var(--shadow);
+  }
+
+  #board-wrap { position: relative; }
+  #board {
+    display: grid;
+    gap: 3px;
+    background: var(--board-frame);
+    padding: 6px;
+    border-radius: 16px;
+    box-shadow: 0 14px 30px var(--shadow);
+  }
+  .cell {
+    background: var(--cell-empty);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    border-radius: 6px;
+    transition: background .12s ease;
+  }
+  .cell.fixed { background: var(--cell-fixed); cursor: default; }
+  .cell.selected { box-shadow: inset 0 0 0 3px var(--accent); }
+  .cell.error { background: var(--error-bg); }
+  .cell.block-border-r { margin-right: 3px; }
+  .cell.block-border-b { margin-bottom: 3px; }
+
+  .piece-icon { width: 68%; height: 68%; display: block; }
+  .error-badge {
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--error-ic);
+    color: #fff;
+    font-size: .62rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #pad {
+    display: grid;
+    gap: 9px;
+    margin-top: 20px;
+  }
+  #pad button {
+    width: 50px; height: 50px;
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 3px 10px var(--shadow);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  #pad button.active-pad { box-shadow: 0 0 0 3px var(--accent); }
+  #pad button .piece-icon { width: 30px; height: 30px; }
+
+  #controls { margin-top: 16px; display: flex; gap: 10px; }
+  #controls button {
+    padding: 10px 18px;
+    border: 2px solid var(--board-frame);
+    border-radius: 10px;
+    background: #fff;
+    font-family: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  #toast {
+    margin-top: 14px;
+    min-height: 1.3em;
+    font-size: .92rem;
+    font-weight: 600;
+    color: var(--success);
+    opacity: 0;
+  }
+
+  /* ---------- Ecrã de vitória ---------- */
+  #screen-win { justify-content: center; align-items: center; text-align: center; }
+  .win-card {
+    background: #fff;
+    border-radius: 22px;
+    padding: 38px 36px;
+    max-width: 340px;
+    box-shadow: 0 20px 40px var(--shadow);
+  }
+  .win-card .emoji { font-size: 3.2rem; }
+  .win-card h2 { margin: 6px 0 2px; font-size: 1.6rem; }
+  .win-stats {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    margin: 18px 0;
+  }
+  .win-stats div { text-align: center; }
+  .win-stats .num { font-size: 1.5rem; font-weight: 700; color: var(--board-frame); }
+  .win-stats .lbl { font-size: .78rem; color: var(--text-soft); }
+
+  @media (max-width: 420px) {
+    .howto { font-size: .82rem; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===== Ecrã inicial ===== -->
+  <main class="screen active" id="screen-start">
+    <div class="logo-mouse">🐭</div>
+    <h1>Ratodoku</h1>
+    <p class="tagline">O quebra-cabeça lógico dos ratinhos. Preenche a grelha sem repetir nenhum na mesma linha, coluna ou bloco.</p>
+
+    <div class="diff-row">
+      <button class="diff-btn selected" data-diff="facil">Fácil</button>
+      <button class="diff-btn" data-diff="medio">Médio</button>
+      <button class="diff-btn" data-diff="dificil">Difícil</button>
+    </div>
+
+    <button class="btn-primary" id="btn-play">Jogar ▶</button>
+
+    <div class="howto">
+      <b>Como jogar:</b> toca numa célula vazia, depois escolhe um ratinho no painel.
+      Cada ratinho só pode aparecer uma vez por linha, coluna e bloco 2×3.
+      Sem repetições = vitória.
+    </div>
+  </main>
+
+  <!-- ===== Ecrã de jogo ===== -->
+  <main class="screen" id="screen-game">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-back" title="Voltar ao início">←</button>
+      <div class="pill">⏱ <span id="timer">00:00</span></div>
+      <div class="pill">🏆 <span id="score">0</span></div>
+    </div>
+
+    <div id="board-wrap">
+      <div id="board"></div>
+    </div>
+
+    <div id="pad"></div>
+
+    <div id="controls">
+      <button id="btn-erase">🧽 Apagar</button>
+      <button id="btn-new">🔁 Novo puzzle</button>
+    </div>
+
+    <div id="toast"></div>
+  </main>
+
+  <!-- ===== Ecrã de vitória ===== -->
+  <main class="screen" id="screen-win">
+    <div class="win-card">
+      <div class="emoji">🐭🎉</div>
+      <h2>Resolvido!</h2>
+      <div class="win-stats">
+        <div><div class="num" id="win-time">00:00</div><div class="lbl">Tempo</div></div>
+        <div><div class="num" id="win-moves">0</div><div class="lbl">Jogadas</div></div>
+        <div><div class="num" id="win-score">0</div><div class="lbl">Pontos</div></div>
+      </div>
+      <button class="btn-primary" id="btn-again">Jogar outra vez</button>
+    </div>
+  </main>
+
+<script>
+/* =========================================================================
+   Ratodoku — mecânica central do Meowdoku (Sudoku 6x6, blocos 2x3),
+   tema ratinhos. Arquitetura em 3 camadas:
+   1) Estado e lógica pura do puzzle (gera, valida, verifica vitória)
+   2) Renderização (desenha tabuleiro/painel a partir do estado)
+   3) Controlador de fluxo (ecrãs: início -> jogo -> vitória)
+   ========================================================================= */
+
+const SIZE = 6;
+const BLOCK_R = 2, BLOCK_C = 3;
+
+// 6 ratinhos distinguíveis por COR + FORMA + NÚMERO (redundância para acessibilidade,
+// nunca dependente só da cor — corrige a falha de clareza visual do jogo original).
+const MICE = [
+  { color: '#F28C28', ear: '#FFD9A0' }, // 1 laranja
+  { color: '#4C8BF5', ear: '#C9DCFB' }, // 2 azul
+  { color: '#3FA796', ear: '#CDEFE8' }, // 3 verde-água
+  { color: '#C65BCF', ear: '#EFD2F3' }, // 4 roxo
+  { color: '#E0B400', ear: '#F8E8A8' }, // 5 amarelo escuro (contraste suficiente)
+  { color: '#6B5E4F', ear: '#D8CFC2' }, // 6 castanho
+];
+
+function mouseSVG(idx, size = 40) {
+  const m = MICE[idx - 1];
+  return `
+  <svg class="piece-icon" viewBox="0 0 48 48" width="${size}" height="${size}" aria-label="ratinho ${idx}">
+    <ellipse cx="24" cy="28" rx="15" ry="13" fill="${m.color}"/>
+    <circle cx="12" cy="14" r="7" fill="${m.color}"/>
+    <circle cx="36" cy="14" r="7" fill="${m.color}"/>
+    <circle cx="12" cy="14" r="3.5" fill="${m.ear}"/>
+    <circle cx="36" cy="14" r="3.5" fill="${m.ear}"/>
+    <circle cx="19" cy="26" r="2.1" fill="#1b1410"/>
+    <circle cx="29" cy="26" r="2.1" fill="#1b1410"/>
+    <ellipse cx="24" cy="31" rx="2.6" ry="1.8" fill="#1b1410"/>
+    <text x="24" y="43" text-anchor="middle" font-size="9" font-weight="700" fill="#1b1410" font-family="Fredoka, sans-serif">${idx}</text>
+  </svg>`;
+}
+
+/* ---------- 1) Estado e lógica pura ---------- */
+
+const Game = {
+  solution: [],
+  puzzle: [],
+  given: [],
+  selected: null,
+  moves: 0,
+  startTime: null,
+  timerInterval: null,
+  solved: false,
+  difficulty: 'facil',
+
+  removalRate() {
+    return { facil: 0.42, medio: 0.55, dificil: 0.68 }[this.difficulty];
+  },
+
+  makeSolutionBase() {
+    const base = [];
+    for (let r = 0; r < SIZE; r++) {
+      const shift = (r * BLOCK_C + Math.floor(r / BLOCK_R)) % SIZE;
+      base.push(Array.from({ length: SIZE }, (_, c) => (c + shift) % SIZE));
+    }
+    return base;
+  },
+
+  shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  },
+
+  newPuzzle() {
+    const base = this.makeSolutionBase();
+    const symbolMap = this.shuffle([0, 1, 2, 3, 4, 5]);
+    this.solution = base.map(row => row.map(v => symbolMap[v] + 1));
+    this.puzzle = this.solution.map(row => row.slice());
+    this.given = this.solution.map(row => row.map(() => true));
+
+    const cells = [];
+    for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) cells.push([r, c]);
+    this.shuffle(cells);
+    const toRemove = Math.floor(cells.length * this.removalRate());
+    for (let i = 0; i < toRemove; i++) {
+      const [r, c] = cells[i];
+      this.puzzle[r][c] = 0;
+      this.given[r][c] = false;
+    }
+
+    this.selected = null;
+    this.moves = 0;
+    this.solved = false;
+    this.startTime = Date.now();
+  },
+
+  hasConflict(r, c, val) {
+    if (val === 0) return false;
+    for (let i = 0; i < SIZE; i++) {
+      if (i !== c && this.puzzle[r][i] === val) return true;
+      if (i !== r && this.puzzle[i][c] === val) return true;
+    }
+    const br = Math.floor(r / BLOCK_R) * BLOCK_R;
+    const bc = Math.floor(c / BLOCK_C) * BLOCK_C;
+    for (let rr = br; rr < br + BLOCK_R; rr++)
+      for (let cc = bc; cc < bc + BLOCK_C; cc++)
+        if ((rr !== r || cc !== c) && this.puzzle[rr][cc] === val) return true;
+    return false;
+  },
+
+  isComplete() {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (this.puzzle[r][c] === 0 || this.hasConflict(r, c, this.puzzle[r][c])) return false;
+    return true;
+  },
+
+  place(val) {
+    if (!this.selected || this.solved) return false;
+    const [r, c] = this.selected;
+    if (this.given[r][c]) return false;
+    this.puzzle[r][c] = val;
+    this.moves++;
+    return true;
+  },
+
+  erase() {
+    if (!this.selected || this.solved) return false;
+    const [r, c] = this.selected;
+    if (this.given[r][c]) return false;
+    this.puzzle[r][c] = 0;
+    return true;
+  },
+
+  elapsedSeconds() {
+    return Math.floor((Date.now() - this.startTime) / 1000);
+  },
+
+  computeScore() {
+    const base = 1000;
+    const timePenalty = this.elapsedSeconds() * 2;
+    const movePenalty = Math.max(0, this.moves - 30) * 5;
+    return Math.max(100, base - timePenalty - movePenalty);
+  },
+};
+
+/* ---------- 2) Renderização ---------- */
+
+const UI = {
+  boardEl: document.getElementById('board'),
+  padEl: document.getElementById('pad'),
+  timerEl: document.getElementById('timer'),
+  scoreEl: document.getElementById('score'),
+  toastEl: document.getElementById('toast'),
+
+  renderBoard() {
+    this.boardEl.style.gridTemplateColumns = `repeat(${SIZE}, 56px)`;
+    this.boardEl.style.gridTemplateRows = `repeat(${SIZE}, 56px)`;
+    this.boardEl.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const div = document.createElement('div');
+        div.className = 'cell';
+        if (Game.given[r][c]) div.classList.add('fixed');
+        if (Game.selected && Game.selected[0] === r && Game.selected[1] === c) div.classList.add('selected');
+        if ((c + 1) % BLOCK_C === 0 && c !== SIZE - 1) div.classList.add('block-border-r');
+        if ((r + 1) % BLOCK_R === 0 && r !== SIZE - 1) div.classList.add('block-border-b');
+
+        const val = Game.puzzle[r][c];
+        if (val !== 0) {
+          div.innerHTML = mouseSVG(val);
+          if (!Game.given[r][c] && Game.hasConflict(r, c, val)) {
+            div.classList.add('error');
+            div.insertAdjacentHTML('beforeend', '<span class="error-badge">!</span>');
+          }
+        }
+        div.addEventListener('click', () => Controller.onCellClick(r, c));
+        this.boardEl.appendChild(div);
+      }
+    }
+  },
+
+  renderPad() {
+    this.padEl.style.gridTemplateColumns = `repeat(${SIZE}, 50px)`;
+    this.padEl.innerHTML = '';
+    for (let v = 1; v <= SIZE; v++) {
+      const btn = document.createElement('button');
+      btn.innerHTML = mouseSVG(v, 30);
+      btn.addEventListener('click', () => Controller.onPadPress(v));
+      this.padEl.appendChild(btn);
+    }
+  },
+
+  updateTimer() {
+    const s = Game.elapsedSeconds();
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    this.timerEl.textContent = `${mm}:${ss}`;
+    return `${mm}:${ss}`;
+  },
+
+  updateScore() {
+    this.scoreEl.textContent = Game.computeScore();
+  },
+
+  flashToast(msg) {
+    this.toastEl.textContent = msg;
+    gsap.fromTo(this.toastEl, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: .25 });
+    gsap.to(this.toastEl, { opacity: 0, delay: 1.1, duration: .4 });
+  },
+
+  bounceCell(r, c) {
+    const idx = r * SIZE + c;
+    const el = this.boardEl.children[idx];
+    if (el) gsap.fromTo(el, { scale: 1.18 }, { scale: 1, duration: .22, ease: 'back.out(3)' });
+  },
+
+  shakeCell(r, c) {
+    const idx = r * SIZE + c;
+    const el = this.boardEl.children[idx];
+    if (el) gsap.fromTo(el, { x: -4 }, { x: 0, duration: .32, ease: 'elastic.out(1, .4)' });
+  },
+};
+
+/* ---------- 3) Controlador de fluxo ---------- */
+
+const Controller = {
+  screens: {
+    start: document.getElementById('screen-start'),
+    game: document.getElementById('screen-game'),
+    win: document.getElementById('screen-win'),
+  },
+
+  goTo(name) {
+    Object.values(this.screens).forEach(s => s.classList.remove('active'));
+    const target = this.screens[name];
+    target.classList.add('active');
+    gsap.fromTo(target, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .35, ease: 'power2.out' });
+  },
+
+  startGame() {
+    Game.newPuzzle();
+    UI.renderBoard();
+    UI.renderPad();
+    UI.updateTimer();
+    UI.updateScore();
+    this.goTo('game');
+    if (Game.timerInterval) clearInterval(Game.timerInterval);
+    Game.timerInterval = setInterval(() => {
+      UI.updateTimer();
+      UI.updateScore();
+    }, 500);
+  },
+
+  onCellClick(r, c) {
+    if (Game.given[r][c] || Game.solved) return;
+    Game.selected = [r, c];
+    UI.renderBoard();
+  },
+
+  onPadPress(val) {
+    if (!Game.selected) {
+      UI.flashToast('Seleciona primeiro uma célula vazia 🐭');
+      return;
+    }
+    const [r, c] = Game.selected;
+    const ok = Game.place(val);
+    if (!ok) return;
+    UI.renderBoard();
+    UI.bounceCell(r, c);
+    if (Game.hasConflict(r, c, val)) UI.shakeCell(r, c);
+    this.checkWin();
+  },
+
+  eraseSelected() {
+    const had = Game.selected;
+    if (Game.erase() && had) {
+      UI.renderBoard();
+    }
+  },
+
+  checkWin() {
+    if (!Game.isComplete()) return;
+    Game.solved = true;
+    clearInterval(Game.timerInterval);
+    const finalTime = UI.updateTimer();
+    const finalScore = Game.computeScore();
+    document.getElementById('win-time').textContent = finalTime;
+    document.getElementById('win-moves').textContent = Game.moves;
+    document.getElementById('win-score').textContent = finalScore;
+    this.goTo('win');
+    confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
+  },
+};
+
+/* ---------- Eventos de UI ---------- */
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    Game.difficulty = btn.dataset.diff;
+  });
+});
+
+document.getElementById('btn-play').addEventListener('click', () => Controller.startGame());
+document.getElementById('btn-back').addEventListener('click', () => {
+  clearInterval(Game.timerInterval);
+  Controller.goTo('start');
+});
+document.getElementById('btn-erase').addEventListener('click', () => Controller.eraseSelected());
+document.getElementById('btn-new').addEventListener('click', () => Controller.startGame());
+document.getElementById('btn-again').addEventListener('click', () => Controller.startGame());
+
+document.addEventListener('keydown', (e) => {
+  if (Controller.screens.game.classList.contains('active')) {
+    if (e.key >= '1' && e.key <= '6') Controller.onPadPress(parseInt(e.key, 10));
+    if (e.key === 'Backspace' || e.key === 'Delete') Controller.eraseSelected();
+  }
+});
+</script>
+</body>
+</html>
