@@ -134,6 +134,73 @@
   }
 
   #board-wrap { position: relative; }
+
+  /* ---------- Veículo (carruagem/avião/navio): casco decorativo à volta do tabuleiro ---------- */
+  .vehicle-shell {
+    position: relative;
+    padding: 46px 14px 18px;
+    border-radius: 32px;
+    box-shadow: 0 16px 34px var(--shadow);
+    background: var(--veh-base, #3B6E9E);
+  }
+  .vehicle-badge {
+    position: absolute;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,.92);
+    color: var(--text);
+    font-size: .74rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .vehicle-windows {
+    position: absolute;
+    top: 30px; left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 16px;
+  }
+  .vehicle-windows span {
+    flex: 1;
+    max-width: 44px;
+    height: 16px;
+    background: var(--veh-light, #CFEBFB);
+    border: 2px solid rgba(0,0,0,.18);
+  }
+  .vehicle-floor {
+    height: 8px;
+    margin-top: 10px;
+    border-radius: 4px;
+    background: repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 10px, transparent 10px 20px);
+  }
+
+  .vehicle-shell.veh-train .vehicle-windows span { border-radius: 5px; }
+  .vehicle-shell.veh-plane { --veh-base: #8A94A6; --veh-light: #F2F4F7; }
+  .vehicle-shell.veh-plane .vehicle-windows span { border-radius: 50%; max-width: 26px; }
+  .vehicle-shell.veh-ship { --veh-base: #0E4D5C; --veh-light: #BDEDE4; }
+  .vehicle-shell.veh-ship .vehicle-windows span { border-radius: 50%; max-width: 28px; border-width: 3px; border-color: #fff; }
+
+  /* ---------- Seletor de veículo (menu) ---------- */
+  .vehicle-row { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+  .vehicle-card {
+    width: 88px;
+    border: 2px solid var(--board-frame);
+    border-radius: 14px;
+    background: #fff;
+    padding: 10px 6px 8px;
+    cursor: pointer;
+    text-align: center;
+    font-family: inherit;
+  }
+  .vehicle-card .v-icon { font-size: 1.7rem; display: block; }
+  .vehicle-card .v-name { font-size: .74rem; font-weight: 700; margin-top: 3px; }
+  .vehicle-card .v-lock { font-size: .64rem; color: var(--text-soft); margin-top: 2px; }
+  .vehicle-card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .vehicle-card.locked { opacity: .55; }
+
   #board {
     display: grid;
     gap: 3px;
@@ -378,7 +445,9 @@
     <div class="logo-icon">🚆</div>
     <h1>PassengerDoku</h1>
     <div class="pill" id="profile-pill" style="font-size:.85rem;">⭐ 0 · 🎮 0 jogos</div>
-    <p class="tagline">O quebra-cabeça lógico dos passageiros. Preenche a carruagem sem repetir nenhum passageiro na mesma linha, coluna ou bloco.</p>
+    <p class="tagline">O quebra-cabeça lógico dos passageiros. Preenche o veículo sem repetir nenhum passageiro na mesma linha, coluna ou bloco.</p>
+
+    <div class="vehicle-row" id="vehicle-row"></div>
 
     <div class="diff-row">
       <button class="diff-btn selected" data-diff="facil">Fácil</button>
@@ -405,7 +474,14 @@
     </div>
 
     <div id="board-wrap">
-      <div id="board"></div>
+      <div class="vehicle-shell veh-train" id="vehicle-shell">
+        <div class="vehicle-badge" id="vehicle-badge">🚆 Carruagem</div>
+        <div class="vehicle-windows">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div id="board"></div>
+        <div class="vehicle-floor"></div>
+      </div>
     </div>
 
     <div id="pad"></div>
@@ -501,7 +577,8 @@ const Profile = {
   data: null,
 
   load() {
-    this.data = Storage.get(this.key, { totalStars: 0, gamesPlayed: 0, bestCombo: 0 });
+    this.data = Storage.get(this.key, { totalStars: 0, gamesPlayed: 0, bestCombo: 0, vehicle: 'train' });
+    if (!this.data.vehicle) this.data.vehicle = 'train';
     return this.data;
   },
   save() { Storage.set(this.key, this.data); },
@@ -510,9 +587,23 @@ const Profile = {
     this.data.totalStars += stars;
     this.data.gamesPlayed += 1;
     this.data.bestCombo = Math.max(this.data.bestCombo, combo);
+    if (!this.data.vehicle) this.data.vehicle = 'train';
     this.save();
   },
 };
+
+// Progressão de veículos: a mesma mecânica (6x6, blocos 2x3) ganha um casco e nome
+// diferentes a cada nível, desbloqueado por estrelas acumuladas — prepara a expansão
+// futura do tema "passageiro" para outros meios de transporte.
+const VEHICLES = [
+  { id: 'train', icon: '🚆', name: 'Carruagem', badge: '🚆 Carruagem 12', unlockStars: 0 },
+  { id: 'plane', icon: '✈️', name: 'Avião', badge: '✈️ Voo PD-204', unlockStars: 15 },
+  { id: 'ship', icon: '🚢', name: 'Navio', badge: '🚢 Convés Principal', unlockStars: 30 },
+];
+
+function vehicleById(id) {
+  return VEHICLES.find(v => v.id === id) || VEHICLES[0];
+}
 
 const SIZE = 6;
 const BLOCK_R = 2, BLOCK_C = 3;
@@ -551,6 +642,7 @@ const Game = {
   timerInterval: null,
   solved: false,
   difficulty: 'facil',
+  vehicle: 'train',
   combo: 0,
   bestCombo: 0,
   errorsCount: 0,
@@ -757,6 +849,31 @@ const UI = {
     document.getElementById('profile-pill').textContent = `⭐ ${p.totalStars} · 🎮 ${p.gamesPlayed} jogos`;
   },
 
+  renderVehicleSelector() {
+    const row = document.getElementById('vehicle-row');
+    const stars = Profile.data.totalStars;
+    row.innerHTML = '';
+    VEHICLES.forEach(v => {
+      const unlocked = stars >= v.unlockStars;
+      const card = document.createElement('button');
+      card.className = 'vehicle-card' + (v.id === Game.vehicle ? ' selected' : '') + (unlocked ? '' : ' locked');
+      card.innerHTML = `
+        <span class="v-icon">${unlocked ? v.icon : '🔒'}</span>
+        <span class="v-name">${v.name}</span>
+        ${unlocked ? '' : `<span class="v-lock">⭐ ${v.unlockStars}</span>`}
+      `;
+      card.addEventListener('click', () => Controller.onVehiclePick(v, unlocked));
+      row.appendChild(card);
+    });
+  },
+
+  applyVehicleShell() {
+    const v = vehicleById(Game.vehicle);
+    const shell = document.getElementById('vehicle-shell');
+    shell.className = 'vehicle-shell veh-' + v.id;
+    document.getElementById('vehicle-badge').textContent = v.badge;
+  },
+
   renderStars(n) {
     const stars = document.querySelectorAll('#win-stars .star');
     gsap.set(stars, { clearProps: 'all' });
@@ -834,7 +951,10 @@ const Controller = {
     const target = this.screens[name];
     target.classList.add('active');
     gsap.fromTo(target, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: .35, ease: 'power2.out' });
-    if (name === 'start') UI.renderProfile();
+    if (name === 'start') {
+      UI.renderProfile();
+      UI.renderVehicleSelector();
+    }
   },
 
   startGame() {
@@ -844,6 +964,7 @@ const Controller = {
     UI.updateTimer();
     UI.updateScore();
     UI.comboEl.textContent = '0';
+    UI.applyVehicleShell();
     this.goTo('game');
     if (Game.timerInterval) clearInterval(Game.timerInterval);
     Game.timerInterval = setInterval(() => {
@@ -956,6 +1077,26 @@ const Controller = {
     } else {
       this.startGame();
     }
+  },
+
+  onVehiclePick(vehicle, unlocked) {
+    if (!unlocked) {
+      const missing = vehicle.unlockStars - Profile.data.totalStars;
+      Modal.confirm({
+        icon: '🔒',
+        title: `${vehicle.name} bloqueado`,
+        text: `Faltam ${missing} ⭐ para desbloquear o ${vehicle.name.toLowerCase()}. Continua a resolver puzzles para ganhar estrelas!`,
+        confirmLabel: 'Entendido',
+        cancelLabel: 'Fechar',
+        danger: false,
+        onConfirm: () => {},
+      });
+      return;
+    }
+    Game.vehicle = vehicle.id;
+    Profile.data.vehicle = vehicle.id;
+    Profile.save();
+    UI.renderVehicleSelector();
   },
 };
 
@@ -1114,6 +1255,7 @@ document.getElementById('btn-tutorial').addEventListener('click', () => Tutorial
 document.getElementById('btn-again').addEventListener('click', () => Controller.startGame());
 
 Profile.load();
+Game.vehicle = Profile.data.vehicle;
 
 document.addEventListener('keydown', (e) => {
   if (Controller.screens.game.classList.contains('active')) {

@@ -36,10 +36,11 @@ Jogo de lógica tipo Sudoku simplificado:
 **Entra (fiel ao essencial da mecânica, + camada de gamificação):**
 - Grelha 6×6 com blocos 2×3, geração de puzzle válido, validação em tempo real, deteção de vitória, temporizador, dificuldade (fácil/médio/difícil), "novo puzzle".
 - Gamificação: combo em tempo real, pontuação com bónus/penalização, 1-3 estrelas por resultado, cards de conquista, perfil persistente (estrelas totais, jogos jogados).
-- UX: splash inicial animado, tutorial interativo de 5 passos (com spotlight real sobre a UI), modais de confirmação para ações destrutivas (sair / recomeçar).
+- UX: splash inicial animado, tutorial interativo de 5 passos (com spotlight real sobre a UI, reabrível a qualquer momento via botão "Ver tutorial" sem perder o progresso nem o tempo do puzzle atual), modais de confirmação para ações destrutivas (sair / recomeçar).
+- **Progressão de veículos:** a mesma mecânica ganha um "casco" visual diferente por nível — Carruagem (nível 1, sempre disponível), Avião (nível 2, desbloqueia aos 15 ⭐ acumuladas), Navio (nível 3, desbloqueia aos 30 ⭐). Cada veículo tem cor própria, janelas com forma distinta (retangular/oval/vigia redonda) e crachá de identificação (ex: "Voo PD-204"). Pensado para, no futuro, expandir ainda mais meios de transporte como forma de progressão de longo prazo.
 
 **Não entra (fora do âmbito de 4h):**
-- Progressão de níveis a longo prazo, loja, anúncios reais, som, multiplayer, conta de utilizador, backend.
+- Loja, anúncios reais, som, multiplayer, conta de utilizador, backend.
 
 ## 4. Stack técnica
 
@@ -59,14 +60,17 @@ Jogo de lógica tipo Sudoku simplificado:
 6. [x] Gamificação: combo, estrelas, cards de conquista, perfil persistente, modais de confirmação.
 7. [x] Pivot de tema: rato → **passageiro de transportes públicos** (posicionamento de público/distribuição a longo prazo).
 8. [x] Deploy no Vercel e link público obtido; deploy automático a cada push.
-9. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
-10. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
-11. [ ] Escrever as 5 respostas curtas (mencionar o raciocínio de público-alvo via transportes públicos).
-12. [ ] Preparar registo de prompts completo (esta conversa).
-13. [ ] Enviar tudo para `hr@infinitygames.io`.
+9. [x] Botão "Ver tutorial" sempre disponível durante o jogo (reabre sem perder progresso nem tempo).
+10. [x] Progressão de veículos (Carruagem → Avião → Navio) com casco visual próprio e desbloqueio por estrelas.
+11. [ ] Testar o link publicado (sem localhost) — confirmar fluxo completo no browser real do dono do projeto.
+12. [ ] Gravar vídeo de ~3 min: jogo a funcionar, jogo de inspiração e porquê, resposta "ampliar ou descartar?".
+13. [ ] Escrever as 5 respostas curtas (mencionar o raciocínio de público-alvo via transportes públicos e a progressão de veículos como gancho de retenção a longo prazo).
+14. [ ] Preparar registo de prompts completo (esta conversa).
+15. [ ] Enviar tudo para `hr@infinitygames.io`.
 
 ## 6. Notas para a próxima sessão/IA
 
 - Língua do projeto e commits: **português**.
 - Cada push para `main` dispara deploy automático no Vercel — não é preciso nenhum passo manual de deploy a partir daqui.
-- Chaves de `localStorage` usadas: `passengerdoku_profile` (estrelas totais, jogos jogados, melhor combo) e `passengerdoku_tutorial_seen` (evita repetir o tutorial). Chaves antigas (`ratodoku_*`) ficaram órfãs em navegadores que já tinham aberto a versão anterior — sem impacto, apenas dados obsoletos.
+- Chaves de `localStorage` usadas: `passengerdoku_profile` (estrelas totais, jogos jogados, melhor combo, veículo selecionado) e `passengerdoku_tutorial_seen` (evita repetir o tutorial automaticamente, mas não impede reabri-lo manualmente). Chaves antigas (`ratodoku_*`) ficaram órfãs em navegadores que já tinham aberto a versão anterior — sem impacto, apenas dados obsoletos.
+- Catálogo de veículos em `VEHICLES` (dentro do `<script>`): acrescentar um novo nível é só adicionar um objeto `{ id, icon, name, badge, unlockStars }` e as duas regras CSS `.vehicle-shell.veh-<id>` (cor do casco) + `.vehicle-shell.veh-<id> .vehicle-windows span` (forma da janela).
